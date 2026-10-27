@@ -349,22 +349,28 @@ export function handleMockRequest<T>(
     };
     proBookings.unshift(proBooking);
 
-    // Update patient booking to confirmed
+    // Update patient booking to confirmed with complete nurse profile
     patientBookings = patientBookings.map((b) =>
       b.id === id
         ? {
             ...b,
             status: "confirmed",
             professional: {
-              id: currentProProfile.id,
-              full_name: currentUser?.full_name ?? "Priya Sharma",
+              id: currentProProfile.id || "prof_priya_sharma",
+              full_name:
+                currentUser && currentUser.role === "professional" && currentUser.full_name
+                  ? currentUser.full_name
+                  : "Priya Sharma",
               avatar_url: null,
-              professional_type: currentProProfile.professional_type,
-              years_of_experience: currentProProfile.years_of_experience,
-              average_rating: currentProProfile.average_rating,
-              total_ratings: currentProProfile.total_ratings,
-              languages_spoken: currentProProfile.languages_spoken,
-              phone_number: currentUser?.phone_number ?? "+919812345678",
+              professional_type: currentProProfile.professional_type || "nurse",
+              years_of_experience: currentProProfile.years_of_experience || 6,
+              average_rating: currentProProfile.average_rating || 4.9,
+              total_ratings: currentProProfile.total_ratings || 124,
+              languages_spoken: currentProProfile.languages_spoken || ["English", "Hindi", "Kannada"],
+              phone_number:
+                currentUser && currentUser.role === "professional" && currentUser.phone_number
+                  ? currentUser.phone_number
+                  : "+91 98123 45678",
             },
           }
         : b,

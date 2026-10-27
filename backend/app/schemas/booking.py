@@ -66,6 +66,21 @@ class BookingListItem(ORMModel):
     service_name_snapshot: str
     scheduled_start_at: datetime
     total_amount: float
+    professional_name: str | None = None
+
+
+class BookingRequest(BaseModel):
+    id: uuid.UUID
+    booking_code: str
+    service_id: uuid.UUID
+    service_name: str
+    scheduled_start_at: datetime
+    scheduled_end_at: datetime
+    area: str
+    distance_km: float
+    earning_amount: float
+    patient_notes: str | None = None
+    created_at: datetime
 
 
 class OfferRespondIn(BaseModel):
