@@ -37,11 +37,11 @@ function StatusMessage({ booking }: { booking: Booking }) {
           Cancel it and book another time — earlier slots usually get picked up faster.
         </Alert>
       ) : (
-        <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <Spinner className="mt-0.5 size-4 shrink-0" />
-          <div>
-            <p className="font-semibold">Finding a professional near you</p>
-            <p className="mt-0.5">
+        <div className="flex gap-4 rounded-2xl border border-amber-200 bg-amber-50/90 p-5 text-base text-amber-950">
+          <Spinner className="mt-0.5 size-5 shrink-0 text-amber-600" />
+          <div className="space-y-1">
+            <p className="font-bold text-amber-900">Finding a professional near you</p>
+            <p className="leading-relaxed text-amber-800">
               Your request is with professionals in your area who are free at this time. You&apos;ll
               see who&apos;s coming here as soon as someone accepts.
             </p>
@@ -94,28 +94,28 @@ function ReviewForm({ bookingId, onDone }: { bookingId: string; onDone: () => vo
   }
 
   return (
-    <Card className="p-5">
-      <h2 className="font-semibold text-slate-900">How was your visit?</h2>
-      <div className="mt-3 flex gap-1">
+    <Card className="p-6">
+      <h2 className="text-xl font-bold text-slate-900">How was your visit?</h2>
+      <div className="mt-4 flex gap-2">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
             aria-label={`${n} star${n > 1 ? "s" : ""}`}
             onClick={() => setRating(n)}
-            className="rounded p-0.5"
+            className="cursor-pointer rounded-xl p-1 transition-transform hover:scale-110"
           >
             <Icon
               name="star"
-              className={cn("size-8", n <= rating ? "fill-amber-400 text-amber-400" : "text-slate-300")}
+              className={cn("size-9", n <= rating ? "fill-amber-400 text-amber-400" : "text-slate-300")}
             />
           </button>
         ))}
       </div>
       {rating > 0 && (
-        <div className="mt-3 space-y-3">
+        <div className="mt-4 space-y-4">
           <Textarea
-            rows={2}
+            rows={3}
             placeholder="Anything you'd like to share? (optional)"
             value={comment}
             onChange={(e) => setComment(e.target.value)}
@@ -153,27 +153,29 @@ function CancelPanel({ booking, onCancelled }: { booking: Booking; onCancelled: 
 
   if (!open) {
     return (
-      <Button variant="dangerGhost" onClick={() => setOpen(true)}>
-        Cancel booking
-      </Button>
+      <div className="pt-2">
+        <Button variant="dangerGhost" onClick={() => setOpen(true)}>
+          Cancel booking
+        </Button>
+      </div>
     );
   }
   return (
-    <Card className="p-5">
-      <h2 className="font-semibold text-slate-900">Cancel this booking?</h2>
-      <p className="mt-1 text-sm text-slate-500">Tell us why — it helps us improve.</p>
-      <div className="mt-3 flex flex-wrap gap-2">
+    <Card className="p-6 border-rose-200 bg-rose-50/20">
+      <h2 className="text-xl font-bold text-slate-900">Cancel this booking?</h2>
+      <p className="mt-1 text-base text-slate-600">Tell us why — it helps us improve our service.</p>
+      <div className="mt-4 flex flex-wrap gap-2.5">
         {CANCEL_REASONS.map((r) => (
           <Chip key={r} selected={reason === r} onClick={() => setReason(r)}>
             {r}
           </Chip>
         ))}
       </div>
-      <div className="mt-4 flex gap-3">
+      <div className="mt-6 flex flex-wrap items-center gap-4">
         <Button variant="danger" loading={saving} onClick={cancel}>
-          Yes, cancel
+          Yes, cancel booking
         </Button>
-        <Button variant="ghost" onClick={() => setOpen(false)}>
+        <Button variant="outline" onClick={() => setOpen(false)}>
           Keep booking
         </Button>
       </div>
@@ -184,8 +186,6 @@ function CancelPanel({ booking, onCancelled }: { booking: Booking; onCancelled: 
 export function PatientBookingDetail() {
   const { id } = useParams<{ id: string }>();
   const [live, setLive] = useState(true);
-  // Poll while something can still change on the other side (a professional accepting,
-  // starting or completing the visit).
   const { data: booking, error, mutate, reload } = useApi<Booking>(`/bookings/${id}`, {
     pollMs: live ? 10_000 : undefined,
   });
@@ -196,7 +196,7 @@ export function PatientBookingDetail() {
     return (
       <div className="space-y-4">
         <Alert tone="error">{error.message}</Alert>
-        <Link href="/patient/bookings" className="text-sm font-semibold text-brand-700">
+        <Link href="/patient/bookings" className="text-base font-semibold text-brand-700 hover:underline">
           ← Back to my bookings
         </Link>
       </div>
@@ -208,15 +208,15 @@ export function PatientBookingDetail() {
   const minutes = (Date.parse(booking.scheduled_end_at) - Date.parse(booking.scheduled_start_at)) / 60_000;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
-      <Link href="/patient/bookings" className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800">
-        <Icon name="chevronLeft" className="size-4" /> My bookings
+    <div className="mx-auto max-w-3xl space-y-6">
+      <Link href="/patient/bookings" className="inline-flex items-center gap-2 text-base font-semibold text-slate-600 hover:text-slate-900 transition-colors">
+        <Icon name="chevronLeft" className="size-5" /> My bookings
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{booking.service_name_snapshot}</h1>
-          <p className="mt-1 text-sm text-slate-500">Booking {booking.booking_code}</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">{booking.service_name_snapshot}</h1>
+          <p className="mt-1.5 text-base font-medium text-slate-500">Booking code: <span className="font-mono text-slate-800 font-bold">{booking.booking_code}</span></p>
         </div>
         <StatusBadge status={booking.status} />
       </div>
@@ -225,17 +225,17 @@ export function PatientBookingDetail() {
       <StatusMessage booking={booking} />
 
       {pro && (
-        <Card className="flex items-center gap-4 p-5">
+        <Card className="flex flex-wrap items-center gap-5 p-6">
           <Avatar name={pro.full_name} size="lg" />
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-slate-900">{pro.full_name}</p>
-            <p className="text-sm text-slate-500">
+            <p className="text-lg font-bold text-slate-900">{pro.full_name}</p>
+            <p className="text-base text-slate-600">
               {PROFESSION_LABEL[pro.professional_type]} · {pro.years_of_experience} yrs experience
             </p>
             <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
               {pro.total_ratings > 0 ? (
                 <>
-                  <Stars value={pro.average_rating} /> {pro.average_rating.toFixed(1)}
+                  <Stars value={pro.average_rating} /> <span className="font-semibold text-slate-800">{pro.average_rating.toFixed(1)}</span>
                 </>
               ) : (
                 "New on Mendyr"
@@ -246,73 +246,73 @@ export function PatientBookingDetail() {
           {booking.status !== "cancelled" && (
             <a
               href={`tel:${pro.phone_number}`}
-              className="flex shrink-0 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+              className="flex shrink-0 items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-base font-bold text-white shadow-md shadow-brand-600/20 hover:bg-brand-700 active:scale-95 transition-all"
               title={displayPhone(pro.phone_number)}
             >
-              <Icon name="phone" className="size-4" /> Call
+              <Icon name="phone" className="size-5" /> Call
             </a>
           )}
         </Card>
       )}
 
       <Card className="divide-y divide-slate-100">
-        <div className="flex gap-3 p-4">
+        <div className="flex gap-4 p-5">
           <Icon name="calendar" className="mt-0.5 size-5 shrink-0 text-slate-400" />
           <div>
-            <p className="text-sm font-medium text-slate-900">{formatDateTime(booking.scheduled_start_at)}</p>
-            <p className="text-sm text-slate-500">{durationLabel(minutes)} visit · India time</p>
+            <p className="text-base font-semibold text-slate-900">{formatDateTime(booking.scheduled_start_at)}</p>
+            <p className="text-sm text-slate-500">{durationLabel(minutes)} visit · India Standard Time</p>
           </div>
         </div>
-        <div className="flex gap-3 p-4">
+        <div className="flex gap-4 p-5">
           <Icon name="pin" className="mt-0.5 size-5 shrink-0 text-slate-400" />
-          <p className="text-sm text-slate-700">{booking.address_snapshot}</p>
+          <p className="text-base text-slate-700 leading-relaxed">{booking.address_snapshot}</p>
         </div>
         {booking.patient_notes && (
-          <div className="flex gap-3 p-4">
+          <div className="flex gap-4 p-5">
             <Icon name="list" className="mt-0.5 size-5 shrink-0 text-slate-400" />
-            <p className="whitespace-pre-line text-sm text-slate-700">{booking.patient_notes}</p>
+            <p className="whitespace-pre-line text-base text-slate-700 leading-relaxed">{booking.patient_notes}</p>
           </div>
         )}
       </Card>
 
       {booking.visit_summary_notes && (
-        <Card className="p-5">
-          <h2 className="font-semibold text-slate-900">Visit notes from {pro?.full_name.split(" ")[0] ?? "your professional"}</h2>
-          <p className="mt-2 whitespace-pre-line text-sm text-slate-700">{booking.visit_summary_notes}</p>
+        <Card className="p-6">
+          <h2 className="text-xl font-bold text-slate-900">Visit notes from {pro?.full_name.split(" ")[0] ?? "your professional"}</h2>
+          <p className="mt-3 whitespace-pre-line text-base text-slate-700 leading-relaxed">{booking.visit_summary_notes}</p>
         </Card>
       )}
 
-      <Card className="p-5">
-        <h2 className="font-semibold text-slate-900">Payment</h2>
-        <dl className="mt-3 space-y-2 text-sm">
+      <Card className="p-6">
+        <h2 className="text-xl font-bold text-slate-900">Payment Breakdown</h2>
+        <dl className="mt-4 space-y-3 text-base">
           <div className="flex justify-between text-slate-600">
             <dt>Visit charge</dt>
-            <dd>{formatINR(booking.base_price)}</dd>
+            <dd className="font-medium text-slate-800">{formatINR(booking.base_price)}</dd>
           </div>
           {booking.discount_amount > 0 && (
-            <div className="flex justify-between text-emerald-700">
+            <div className="flex justify-between text-emerald-700 font-medium">
               <dt>Discount</dt>
               <dd>−{formatINR(booking.discount_amount)}</dd>
             </div>
           )}
           <div className="flex justify-between text-slate-600">
             <dt>GST</dt>
-            <dd>{formatINR(booking.tax_amount)}</dd>
+            <dd className="font-medium text-slate-800">{formatINR(booking.tax_amount)}</dd>
           </div>
-          <div className="flex justify-between border-t border-slate-100 pt-2 font-bold text-slate-900">
+          <div className="flex justify-between border-t border-slate-100 pt-3 text-lg font-extrabold text-slate-900">
             <dt>Total</dt>
             <dd>{formatINR(booking.total_amount)}</dd>
           </div>
         </dl>
         {booking.status !== "cancelled" && (
-          <p className="mt-3 text-xs text-slate-500">Paid after the visit — nothing is charged online.</p>
+          <p className="mt-4 text-xs font-medium text-slate-500">Paid directly after the visit — zero online payment required now.</p>
         )}
       </Card>
 
       {booking.status === "completed" &&
         (booking.review_rating ? (
-          <Card className="flex items-center justify-between p-5">
-            <p className="text-sm font-medium text-slate-700">Your rating</p>
+          <Card className="flex items-center justify-between p-6">
+            <p className="text-base font-semibold text-slate-800">Your rating</p>
             <Stars value={booking.review_rating} />
           </Card>
         ) : (

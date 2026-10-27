@@ -18,12 +18,12 @@ import { useMyBookings, useOpenRequests, useProfessional } from "./professional-
 
 function Stat({ icon, label, value, tone }: { icon: IconName; label: string; value: string; tone: string }) {
   return (
-    <Card className="p-4">
-      <span className={cn("flex size-9 items-center justify-center rounded-lg", tone)}>
-        <Icon name={icon} className="size-4.5" />
+    <Card className="p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
+      <span className={cn("flex size-11 items-center justify-center rounded-xl", tone)}>
+        <Icon name={icon} className="size-5" />
       </span>
-      <p className="mt-3 text-xl font-bold text-slate-900">{value}</p>
-      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className="mt-4 text-2xl sm:text-3xl font-black tracking-tight text-slate-900">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-500">{label}</p>
     </Card>
   );
 }
@@ -65,11 +65,11 @@ export default function ProDashboardPage() {
   const openRequests = requests.data ?? [];
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Hi, {user?.full_name.split(" ")[0]}</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {PROFESSION_LABEL[profile.professional_type]} · serving within {profile.service_radius_km} km
+    <div className="space-y-10">
+      <div className="border-b border-slate-200/80 pb-6">
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Hi, {user?.full_name.split(" ")[0]} 👋</h1>
+        <p className="mt-2 text-base sm:text-lg text-slate-600">
+          <span className="font-semibold text-slate-800">{PROFESSION_LABEL[profile.professional_type]}</span> · serving within <span className="font-semibold text-slate-800">{profile.service_radius_km} km</span> of your area
         </p>
       </div>
 
@@ -81,15 +81,15 @@ export default function ProDashboardPage() {
         </Alert>
       )}
 
-      <Card className="flex items-center justify-between gap-4 p-5">
+      <Card className="flex flex-wrap items-center justify-between gap-6 p-6 sm:p-7 border-brand-200 bg-brand-50/30">
         <div>
-          <p className="font-semibold text-slate-900">
+          <p className="text-lg font-bold text-slate-900">
             {profile.is_accepting_bookings ? "Accepting new requests" : "Not accepting new requests"}
           </p>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <p className="mt-1 text-base text-slate-600">
             {profile.is_accepting_bookings
-              ? "Requests near you, inside your timings, show up below."
-              : "Turn this on when you're ready to take visits."}
+              ? "New patient requests in your area and timings appear automatically below."
+              : "Toggle on when you are ready to take home visits."}
           </p>
         </div>
         <Switch
@@ -100,25 +100,25 @@ export default function ProDashboardPage() {
         />
       </Card>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat icon="rupee" label="Earned this month" value={formatINR(monthEarnings)} tone="bg-emerald-50 text-emerald-600" />
-        <Stat icon="check" label="Visits completed" value={String(profile.total_visits_completed)} tone="bg-sky-50 text-sky-600" />
-        <Stat icon="calendar" label="Upcoming visits" value={String(upcoming.length)} tone="bg-violet-50 text-violet-600" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat icon="rupee" label="Earned this month" value={formatINR(monthEarnings)} tone="bg-emerald-50 text-emerald-600 border border-emerald-100" />
+        <Stat icon="check" label="Visits completed" value={String(profile.total_visits_completed)} tone="bg-sky-50 text-sky-600 border border-sky-100" />
+        <Stat icon="calendar" label="Upcoming visits" value={String(upcoming.length)} tone="bg-violet-50 text-violet-600 border border-violet-100" />
         <Stat
           icon="star"
-          label={profile.total_ratings ? `${profile.total_ratings} ratings` : "No ratings yet"}
+          label={profile.total_ratings ? `${profile.total_ratings} patient reviews` : "No ratings yet"}
           value={profile.total_ratings ? profile.average_rating.toFixed(1) : "—"}
-          tone="bg-amber-50 text-amber-600"
+          tone="bg-amber-50 text-amber-600 border border-amber-100"
         />
       </div>
 
       {slots.data?.length === 0 && (
-        <Alert tone="info" title="Set your timings">
-          Right now you&apos;ll see requests for any time of day.{" "}
-          <Link href="/pro/schedule" className="font-semibold underline">
-            Choose when you&apos;re free
+        <Alert tone="info" title="Set your working timings">
+          Currently you&apos;ll see requests for any hour of the day.{" "}
+          <Link href="/pro/schedule" className="font-bold underline text-brand-700">
+            Choose your free hours
           </Link>{" "}
-          to only see the ones that fit.
+          to only see requests that fit your calendar.
         </Alert>
       )}
 
@@ -127,22 +127,22 @@ export default function ProDashboardPage() {
           title={`New requests near you${openRequests.length ? ` (${openRequests.length})` : ""}`}
           action={
             openRequests.length > 2 && (
-              <Link href="/pro/requests" className="text-sm font-semibold text-brand-700">
-                See all
+              <Link href="/pro/requests" className="text-base font-bold text-brand-600 hover:text-brand-700">
+                See all requests →
               </Link>
             )
           }
         />
         {requests.loading ? (
-          <div className="h-32 animate-pulse rounded-2xl bg-slate-200/60" />
+          <div className="h-36 animate-pulse rounded-2xl bg-slate-200/60" />
         ) : openRequests.length === 0 ? (
           <EmptyState icon="bell" title="No new requests right now">
             {profile.is_accepting_bookings
-              ? "We'll show requests here as patients near you book. This page refreshes on its own."
+              ? "We'll display requests here as patients near you book. This feed automatically refreshes."
               : "You've paused new requests."}
           </EmptyState>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {openRequests.slice(0, 2).map((request) => (
               <RequestCard key={request.id} request={request} onGone={requests.reload} />
             ))}
@@ -155,12 +155,12 @@ export default function ProDashboardPage() {
           <SectionHeading
             title="Your upcoming visits"
             action={
-              <Link href="/pro/bookings" className="text-sm font-semibold text-brand-700">
-                All bookings
+              <Link href="/pro/bookings" className="text-base font-bold text-brand-600 hover:text-brand-700">
+                All bookings →
               </Link>
             }
           />
-          <div className="space-y-3">
+          <div className="space-y-4">
             {upcoming.slice(0, 3).map((booking) => (
               <ProBookingRow key={booking.id} booking={booking} />
             ))}

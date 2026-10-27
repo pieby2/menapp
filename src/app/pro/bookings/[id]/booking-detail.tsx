@@ -39,10 +39,10 @@ function CompleteVisitForm({ booking, onDone }: { booking: ProBooking; onDone: (
   }
 
   return (
-    <Card className="p-5">
-      <h2 className="font-semibold text-slate-900">Finish the visit</h2>
-      <p className="mt-1 text-sm text-slate-500">The patient sees your notes in their booking.</p>
-      <div className="mt-4 space-y-4">
+    <Card className="p-6 sm:p-7 border-emerald-200 bg-emerald-50/20">
+      <h2 className="text-xl font-bold text-slate-900">Finish the visit</h2>
+      <p className="mt-1 text-base text-slate-600">The patient sees your notes in their booking once completed.</p>
+      <div className="mt-5 space-y-5">
         <Field label="Visit notes" htmlFor="visit-notes" optional>
           <Textarea
             id="visit-notes"
@@ -61,7 +61,7 @@ function CompleteVisitForm({ booking, onDone }: { booking: ProBooking; onDone: (
             placeholder="e.g. BP 128/82, pulse 76, SpO2 97%, temp 98.4°F"
           />
         </Field>
-        <Button onClick={complete} loading={saving} icon="check">
+        <Button onClick={complete} loading={saving} icon="check" size="md">
           Mark visit completed
         </Button>
       </div>
@@ -81,7 +81,7 @@ export function ProBookingDetail() {
     return (
       <div className="space-y-4">
         <Alert tone="error">{error.message}</Alert>
-        <Link href="/pro/bookings" className="text-sm font-semibold text-brand-700">
+        <Link href="/pro/bookings" className="text-base font-semibold text-brand-700 hover:underline">
           ← Back to my bookings
         </Link>
       </div>
@@ -121,80 +121,82 @@ export function ProBookingDetail() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
-      <Link href="/pro/bookings" className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800">
-        <Icon name="chevronLeft" className="size-4" /> My bookings
+    <div className="mx-auto max-w-3xl space-y-6">
+      <Link href="/pro/bookings" className="inline-flex items-center gap-2 text-base font-semibold text-slate-600 hover:text-slate-900 transition-colors">
+        <Icon name="chevronLeft" className="size-5" /> My bookings
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{booking.service_name}</h1>
-          <p className="mt-1 text-sm text-slate-500">Booking {booking.booking_code}</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">{booking.service_name}</h1>
+          <p className="mt-1.5 text-base font-medium text-slate-500">Booking code: <span className="font-mono text-slate-800 font-bold">{booking.booking_code}</span></p>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
+        <div className="flex flex-col items-end gap-2">
           <StatusBadge status={booking.status} />
-          <p className="text-sm font-semibold text-emerald-700">You earn {formatINR(booking.earning_amount)}</p>
+          <p className="text-base font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+            You earn {formatINR(booking.earning_amount)}
+          </p>
         </div>
       </div>
 
       <Card className="divide-y divide-slate-100">
-        <div className="flex gap-3 p-4">
+        <div className="flex gap-4 p-5">
           <Icon name="calendar" className="mt-0.5 size-5 shrink-0 text-slate-400" />
           <div>
-            <p className="text-sm font-medium text-slate-900">{formatDateTime(booking.scheduled_start_at)}</p>
-            <p className="text-sm text-slate-500">{durationLabel(minutes)} · India time</p>
+            <p className="text-base font-semibold text-slate-900">{formatDateTime(booking.scheduled_start_at)}</p>
+            <p className="text-sm text-slate-500">{durationLabel(minutes)} · India Standard Time</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 p-4">
+        <div className="flex flex-wrap items-center gap-4 p-5">
           <Icon name="user" className="size-5 shrink-0 text-slate-400" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-slate-900">{booking.patient_name}</p>
-            <p className="text-sm text-slate-500">{displayPhone(booking.patient_phone)}</p>
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-base font-bold text-slate-900">{booking.patient_name}</p>
+            <p className="text-sm font-medium text-slate-500">{displayPhone(booking.patient_phone)}</p>
           </div>
           <a
             href={`tel:${booking.patient_phone}`}
-            className="flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+            className="flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-base font-bold text-white shadow-md shadow-brand-600/20 hover:bg-brand-700 active:scale-95 transition-all"
           >
-            <Icon name="phone" className="size-4" /> Call
+            <Icon name="phone" className="size-4.5" /> Call patient
           </a>
         </div>
-        <div className="flex items-start gap-3 p-4">
-          <Icon name="pin" className="mt-0.5 size-5 shrink-0 text-slate-400" />
-          <div className="flex-1">
-            <p className="text-sm text-slate-900">{booking.address}</p>
-            {booking.landmark && <p className="text-sm text-slate-500">Landmark: {booking.landmark}</p>}
-            {booking.instructions && <p className="mt-1 text-sm text-slate-600">“{booking.instructions}”</p>}
+        <div className="flex flex-wrap items-start gap-4 p-5">
+          <Icon name="pin" className="mt-1 size-5 shrink-0 text-slate-400" />
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-base font-medium text-slate-900 leading-relaxed">{booking.address}</p>
+            {booking.landmark && <p className="mt-0.5 text-sm text-slate-500">Landmark: {booking.landmark}</p>}
+            {booking.instructions && <p className="mt-1.5 text-sm text-slate-600 bg-slate-50 p-2.5 rounded-lg">“{booking.instructions}”</p>}
           </div>
           <a
             href={directions}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-5 py-2.5 text-base font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50 active:scale-95 transition-all"
           >
-            <Icon name="navigation" className="size-4" /> Directions
+            <Icon name="navigation" className="size-4.5" /> Directions
           </a>
         </div>
         {booking.patient_notes && (
-          <div className="flex gap-3 p-4">
+          <div className="flex gap-4 p-5 bg-slate-50/50">
             <Icon name="list" className="mt-0.5 size-5 shrink-0 text-slate-400" />
-            <p className="whitespace-pre-line text-sm text-slate-700">{booking.patient_notes}</p>
+            <p className="whitespace-pre-line text-base text-slate-700 leading-relaxed">{booking.patient_notes}</p>
           </div>
         )}
       </Card>
 
       {startable && (
-        <Card className="p-5">
-          <h2 className="font-semibold text-slate-900">Start the visit</h2>
-          <p className="mt-1 text-sm text-slate-500">
+        <Card className="p-6 sm:p-7 border-brand-200 bg-brand-50/20">
+          <h2 className="text-xl font-bold text-slate-900">Start the visit</h2>
+          <p className="mt-1.5 text-base text-slate-600">
             {tooEarly
               ? `You can start from 2 hours before — at ${formatTime(new Date(startsAt - EARLY_START_MS))} on the day.`
-              : "Tap start when you reach the patient."}
+              : "Tap start when you reach the patient's address."}
           </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button onClick={start} loading={busy === "start"} disabled={tooEarly || busy !== null} icon="check">
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <Button onClick={start} loading={busy === "start"} disabled={tooEarly || busy !== null} icon="check" size="md">
               Start visit
             </Button>
-            <Button variant="dangerGhost" loading={busy === "release"} disabled={busy !== null} onClick={release}>
+            <Button variant="dangerGhost" size="md" loading={busy === "release"} disabled={busy !== null} onClick={release}>
               Can&apos;t make it
             </Button>
           </div>
@@ -204,13 +206,13 @@ export function ProBookingDetail() {
       {booking.status === "in_progress" && <CompleteVisitForm booking={booking} onDone={mutate} />}
 
       {booking.status === "completed" && (
-        <Card className="p-5">
-          <h2 className="font-semibold text-slate-900">Visit completed</h2>
+        <Card className="p-6">
+          <h2 className="text-xl font-bold text-slate-900">Visit completed</h2>
           {booking.completed_at && (
-            <p className="mt-1 text-sm text-slate-500">Finished at {formatDateTime(booking.completed_at)}</p>
+            <p className="mt-1 text-base text-slate-500">Finished at {formatDateTime(booking.completed_at)}</p>
           )}
           {booking.visit_summary_notes && (
-            <p className="mt-3 whitespace-pre-line text-sm text-slate-700">{booking.visit_summary_notes}</p>
+            <p className="mt-3 whitespace-pre-line text-base text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl">{booking.visit_summary_notes}</p>
           )}
         </Card>
       )}
