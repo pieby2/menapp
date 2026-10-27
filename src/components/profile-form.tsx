@@ -67,7 +67,7 @@ export function ProfileForm() {
             id="profile-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Asha Patel"
+            placeholder="e.g. Rahul Sharma"
           />
         </Field>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -86,7 +86,7 @@ export function ProfileForm() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="asha@example.com"
+              placeholder="rahul@example.com"
             />
           </Field>
         </div>

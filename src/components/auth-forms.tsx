@@ -283,3 +283,16 @@ export function RegisterChoices() {
     </div>
   );
 }
+
+export function RegisterChoiceFooter() {
+  const next = safeNext(useSearchParams().get("next"));
+  const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : "/login";
+  return (
+    <>
+      Already have an account?{" "}
+      <Link href={loginHref} className="font-semibold text-brand-700 hover:underline">
+        Log in
+      </Link>
+    </>
+  );
+}

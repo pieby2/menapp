@@ -35,12 +35,13 @@ const NO_REFRESH = ["/auth/login", "/auth/register", "/auth/token/refresh", "/au
 /** Fired on `window` when a request is rejected and the session can't be refreshed. */
 export const SESSION_ENDED = "mendyr:session-ended";
 
-/** App build: the native-client marker plus the current access token. */
+/** Request headers: native-client platform marker plus the current access token. */
 async function appHeaders(withAuth = true): Promise<Record<string, string>> {
-  if (!IS_APP) return {};
   const headers: Record<string, string> = {};
-  const platform = await nativePlatform();
-  if (platform !== "web") headers["X-Client-Platform"] = platform;
+  if (IS_APP) {
+    const platform = await nativePlatform();
+    if (platform !== "web") headers["X-Client-Platform"] = platform;
+  }
   const tokens = withAuth ? await getTokens() : null;
   if (tokens) headers.Authorization = `Bearer ${tokens.access}`;
   return headers;
@@ -109,9 +110,16 @@ export async function api<T>(
   } catch {
     // If backend is unreachable (e.g. testing mobile app without running server),
     // fall back to mock handler so user can test booking and receiving flows smoothly!
-    const mockData = handleMockRequest<T>(path, method, body);
-    if (mockData !== null) {
-      return mockData;
+    try {
+      const mockData = handleMockRequest<T>(path, method, body);
+      if (mockData !== null) {
+        return mockData;
+      }
+    } catch (mockErr: any) {
+      if (mockErr && typeof mockErr === "object" && "status" in mockErr) {
+        throw new ApiError(mockErr.message, mockErr.status, mockErr.code ?? "error");
+      }
+      throw mockErr;
     }
     throw new ApiError("Can't reach Mendyr right now. Check your connection.", 0, "network");
   }
@@ -133,9 +141,16 @@ export async function api<T>(
 
   if (!response.ok) {
     if (response.status >= 404) {
-      const mockData = handleMockRequest<T>(path, method, body);
-      if (mockData !== null) {
-        return mockData;
+      try {
+        const mockData = handleMockRequest<T>(path, method, body);
+        if (mockData !== null) {
+          return mockData;
+        }
+      } catch (mockErr: any) {
+        if (mockErr && typeof mockErr === "object" && "status" in mockErr) {
+          throw new ApiError(mockErr.message, mockErr.status, mockErr.code ?? "error");
+        }
+        throw mockErr;
       }
     }
     const message = payload?.detail ?? payload?.error?.message ?? `Something went wrong (${response.status}).`;

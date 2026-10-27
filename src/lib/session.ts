@@ -1,6 +1,6 @@
 // The app build's session: the backend's access + refresh tokens, kept in the phone's
 // secure storage (iOS Keychain / Android Keystore) so a restart doesn't log you out.
-// The web build never uses this — its session is the backend's httponly cookies.
+// The web build also mirrors in localStorage for smooth client-side session management.
 
 import { IS_APP } from "@/lib/platform";
 
@@ -35,31 +35,49 @@ function isFreshInstall(): boolean {
 }
 
 export async function getTokens(): Promise<Tokens | null> {
-  if (!IS_APP) return null;
   if (cached !== undefined) return cached;
-  if (isFreshInstall()) {
-    await setTokens(null);
-    return cached ?? null;
+  if (IS_APP) {
+    if (isFreshInstall()) {
+      await setTokens(null);
+      return cached ?? null;
+    }
+    try {
+      const { SecureStorage } = await storageModule();
+      const stored = await SecureStorage.get(KEY);
+      const value = stored as Partial<Tokens> | null;
+      cached = value?.access && value.refresh ? { access: value.access, refresh: value.refresh } : null;
+    } catch {
+      cached = null; // unreadable — sign in again
+    }
+  } else {
+    try {
+      const stored = typeof window !== "undefined" ? localStorage.getItem(KEY) : null;
+      cached = stored ? JSON.parse(stored) : null;
+    } catch {
+      cached = null;
+    }
   }
-  try {
-    const { SecureStorage } = await storageModule();
-    const stored = await SecureStorage.get(KEY);
-    const value = stored as Partial<Tokens> | null;
-    cached = value?.access && value.refresh ? { access: value.access, refresh: value.refresh } : null;
-  } catch {
-    cached = null; // unreadable (e.g. keystore reset after a device restore) — sign in again
-  }
-  return cached;
+  return cached ?? null;
 }
 
 export async function setTokens(tokens: Tokens | null): Promise<void> {
-  if (!IS_APP) return;
   cached = tokens;
-  try {
-    const { SecureStorage } = await storageModule();
-    if (tokens) await SecureStorage.set(KEY, { access: tokens.access, refresh: tokens.refresh });
-    else await SecureStorage.remove(KEY);
-  } catch {
-    // Keep the in-memory session for this launch even if persisting failed.
+  if (IS_APP) {
+    try {
+      const { SecureStorage } = await storageModule();
+      if (tokens) await SecureStorage.set(KEY, { access: tokens.access, refresh: tokens.refresh });
+      else await SecureStorage.remove(KEY);
+    } catch {
+      // Keep the in-memory session for this launch even if persisting failed.
+    }
+  } else {
+    try {
+      if (typeof window !== "undefined") {
+        if (tokens) localStorage.setItem(KEY, JSON.stringify(tokens));
+        else localStorage.removeItem(KEY);
+      }
+    } catch {
+      // Keep in-memory session
+    }
   }
 }
