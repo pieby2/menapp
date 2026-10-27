@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 
+import { NativeBootstrap } from "@/components/native-bootstrap";
 import { ToastProvider } from "@/components/toast";
 import { AuthProvider } from "@/lib/auth";
+import { IS_APP } from "@/lib/platform";
 
 import "./globals.css";
 
@@ -18,15 +20,21 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#F7F9FC",
+  viewportFit: "cover",
+  ...(IS_APP ? { maximumScale: 1, userScalable: false, interactiveWidget: "resizes-content" } : {}),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${outfit.variable} h-full antialiased${IS_APP ? " is-app" : ""}`}
+    >
       <body className="min-h-full font-sans">
         <AuthProvider>
           <ToastProvider>{children}</ToastProvider>
         </AuthProvider>
+        {IS_APP && <NativeBootstrap />}
       </body>
     </html>
   );

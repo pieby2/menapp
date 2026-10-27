@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- #F7F9FC — the app's background (src/app/globals.css). -->
+    <color name="mendyr_background">#F7F9FC</color>
+</resources>

@@ -56,3 +56,6 @@ ENV/
 .mypy_cache/
 backend/.venv/
 backend/__pycache__/
+
+*.apk
+
