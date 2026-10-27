@@ -6,7 +6,6 @@ Never hardcode secrets — this module only defines shape + defaults for local d
 """
 
 from functools import lru_cache
-from typing import Literal
 from urllib.parse import quote
 
 from pydantic import computed_field
@@ -74,8 +73,8 @@ class Settings(BaseSettings):
 
     # ── Redis / Celery ───────────────────────────────────────────────────
     # Set false to run without a Redis instance at all: rate limiting falls back to an
-    # in-process (single-worker-process-only) store. Fine for early local/dev use;
-    # Celery worker/beat still need real Redis to run
+    # in-process (single-worker-process-only) store, and OTP resend cooldown is skipped
+    # entirely. Fine for early local/dev use; Celery worker/beat still need real Redis to run
     # (background jobs just won't be sent anywhere if you're not running those processes).
     REDIS_ENABLED: bool = True
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -85,42 +84,12 @@ class Settings(BaseSettings):
     # ── Auth ─────────────────────────────────────────────────────────────
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-
-    # Also set both tokens as httponly cookies (in addition to the response body), so browser
-    # clients — the Next.js frontend never reads/stores a token, it's cookie-only — can rely
-    # on them without storing anything in JS-accessible storage. Native/API clients keep using
-    # the response-body tokens as an Authorization: Bearer header instead (see
-    # `_client_platform` in app/api/v1/endpoints/auth.py); this flag gates both cookies.
-    REFRESH_TOKEN_COOKIE_ENABLED: bool = True
-    REFRESH_TOKEN_COOKIE_NAME: str = "refresh_token"
-    ACCESS_TOKEN_COOKIE_NAME: str = "access_token"
-
-    # The browser app (mendyr.app) and the Capacitor shells (https://localhost on Android,
-    # capacitor://localhost on iOS) are all served from a *different site* than this API, so
-    # their session cookies are third-party ones. Browsers only send those when the cookie is
-    # `SameSite=None; Secure` — a `lax` cookie is silently never sent on a cross-site request,
-    # which reads as "logged in, then instantly logged out". Deployments where the API and the
-    # frontend share a site (and local dev over plain HTTP) keep the stricter `lax` default.
-    SESSION_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
-    # None → derive from ENVIRONMENT (secure only in production), preserving the original
-    # behaviour; set explicitly to force it either way.
-    SESSION_COOKIE_SECURE: bool | None = None
-
-    @computed_field  # type: ignore[misc]
-    @property
-    def session_cookie_secure(self) -> bool:
-        """Whether session cookies carry the `Secure` flag.
-
-        `SameSite=None` is only honoured on a `Secure` cookie — browsers drop the cookie
-        outright otherwise — so `none` implies secure no matter how the flag is set. That's a
-        browser invariant, not a preference, so it's encoded here rather than left to whoever
-        writes the env file to get right.
-        """
-        explicit = (
-            self.is_production if self.SESSION_COOKIE_SECURE is None else self.SESSION_COOKIE_SECURE
-        )
-        return explicit or self.SESSION_COOKIE_SAMESITE == "none"
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 60
+    OTP_LENGTH: int = 6
+    OTP_TTL_SECONDS: int = 300
+    OTP_MAX_ATTEMPTS: int = 5
+    OTP_RESEND_COOLDOWN_SECONDS: int = 45
+    OTP_DEV_BYPASS_CODE: str = "000000"
 
     # ── Marketplace rules ────────────────────────────────────────────────
     PLATFORM_COMMISSION_PCT: float = 20
@@ -132,19 +101,6 @@ class Settings(BaseSettings):
     FREE_CANCELLATION_WINDOW_MINUTES: int = 60
     CANCELLATION_FEE_PCT: float = 25
     VISIT_CHECKIN_GEOFENCE_METERS: int = 300
-    # Geofenced check-in needs the professional's live GPS at the patient's door. Off for the
-    # web prototype, where "Start visit" is a plain button; when on, check-in must include a
-    # location within VISIT_CHECKIN_GEOFENCE_METERS of the booking address.
-    VISIT_GEOFENCE_ENABLED: bool = False
-    # How far ahead a patient may schedule a visit.
-    BOOKING_MAX_DAYS_AHEAD: int = 60
-    # Professionals are verified on signup while the prototype has no ops review screen. Set
-    # false once KYC review is staffed: new profiles then start PENDING and see no requests
-    # until approved via POST /admin/professionals/{id}/review.
-    AUTO_APPROVE_PROFESSIONALS: bool = True
-    # Weekly availability slots are wall-clock times in this zone. A booking's UTC start time
-    # is converted to it before being compared against a professional's timings.
-    MARKET_TIMEZONE: str = "Asia/Kolkata"
 
     # ── Payments ─────────────────────────────────────────────────────────
     RAZORPAY_KEY_ID: str = ""
@@ -171,12 +127,6 @@ class Settings(BaseSettings):
 
     # ── Maps ─────────────────────────────────────────────────────────────
     GOOGLE_MAPS_API_KEY: str = ""
-    # Address <-> coordinates lookups use OpenStreetMap's free Nominatim service. Its usage
-    # policy (https://operations.osmfoundation.org/policies/nominatim/) allows ~1 request/second
-    # and requires a User-Agent identifying the app — fine for the prototype; move to a paid
-    # geocoder before real traffic.
-    NOMINATIM_URL: str = "https://nominatim.openstreetmap.org"
-    NOMINATIM_USER_AGENT: str = "Mendyr/0.1 (+https://mendyr.app)"
 
     # ── Observability ────────────────────────────────────────────────────
     SENTRY_DSN: str = ""

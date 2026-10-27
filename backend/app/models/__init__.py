@@ -10,7 +10,6 @@ from app.models.booking import (
     CarePlan,
     VisitTrackingPing,
 )
-from app.models.config import Config
 from app.models.notification import Notification
 from app.models.patient import PatientProfile
 from app.models.payment import Payment, Payout
@@ -21,11 +20,10 @@ from app.models.professional import (
     ProfessionalSpecialization,
     Specialization,
 )
-from app.models.query_info import QueryInfo
 from app.models.review import Review
 from app.models.service import ProfessionalService, Service, ServiceCategory
 from app.models.support import SupportTicket, SupportTicketMessage
-from app.models.user import DeviceToken, OTPVerification, RefreshToken, User
+from app.models.user import DeviceToken, OTPVerification, User
 from app.models.wallet import Coupon, CouponRedemption, Wallet, WalletTransaction
 
 __all__ = [
@@ -37,7 +35,6 @@ __all__ = [
     "BookingVisit",
     "CarePlan",
     "VisitTrackingPing",
-    "Config",
     "Notification",
     "PatientProfile",
     "Payment",
@@ -47,7 +44,6 @@ __all__ = [
     "ProfessionalProfile",
     "ProfessionalSpecialization",
     "Specialization",
-    "QueryInfo",
     "Review",
     "ProfessionalService",
     "Service",
@@ -56,7 +52,6 @@ __all__ = [
     "SupportTicketMessage",
     "DeviceToken",
     "OTPVerification",
-    "RefreshToken",
     "User",
     "Coupon",
     "CouponRedemption",

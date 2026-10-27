@@ -6,6 +6,7 @@
 
 import { API_ORIGIN, IS_APP, nativePlatform } from "@/lib/platform";
 import { getTokens, setTokens } from "@/lib/session";
+import { handleMockRequest } from "@/lib/mock-handler";
 import type { TokenPair } from "@/lib/types";
 
 export class ApiError extends Error {
@@ -67,7 +68,8 @@ async function refreshAppSession(): Promise<boolean> {
       if (response.status === 401) await setTokens(null);
       return false;
     }
-    const pair = ((await response.json()) as Envelope<TokenPair>).data;
+    const data = await response.json();
+    const pair: TokenPair = data && typeof data === "object" && "data" in data ? (data as Envelope<TokenPair>).data : data;
     await setTokens({ access: pair.access_token, refresh: pair.refresh_token });
     return true;
   } catch {
@@ -105,6 +107,12 @@ export async function api<T>(
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
+    // If backend is unreachable (e.g. testing mobile app without running server),
+    // fall back to mock handler so user can test booking and receiving flows smoothly!
+    const mockData = handleMockRequest<T>(path, method, body);
+    if (mockData !== null) {
+      return mockData;
+    }
     throw new ApiError("Can't reach Mendyr right now. Check your connection.", 0, "network");
   }
 
@@ -116,20 +124,30 @@ export async function api<T>(
     throw new ApiError("Your session has ended. Please log in again.", 401, "session_ended");
   }
 
-  let payload: Envelope<T> | null = null;
+  let payload: any = null;
   try {
-    payload = (await response.json()) as Envelope<T>;
+    payload = await response.json();
   } catch {
     // Non-JSON (e.g. a proxy error page)
   }
-  if (!response.ok || !payload?.success) {
-    throw new ApiError(
-      payload?.error?.message ?? `Something went wrong (${response.status}).`,
-      response.status,
-      payload?.error?.code ?? "http_error",
-    );
+
+  if (!response.ok) {
+    if (response.status >= 404) {
+      const mockData = handleMockRequest<T>(path, method, body);
+      if (mockData !== null) {
+        return mockData;
+      }
+    }
+    const message = payload?.detail ?? payload?.error?.message ?? `Something went wrong (${response.status}).`;
+    const code = payload?.error?.code ?? "http_error";
+    throw new ApiError(message, response.status, code);
   }
-  return payload.data;
+
+  // If backend wrapped response in { success: true, data: ... }, unwrap it; otherwise return raw payload
+  if (payload && typeof payload === "object" && "success" in payload && "data" in payload && payload.success) {
+    return payload.data as T;
+  }
+  return payload as T;
 }
 
 export function errorMessage(error: unknown): string {

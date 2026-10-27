@@ -1,4 +1,4 @@
-.PHONY: install dev run worker beat migrate revision seed seed-dummy repair-migrations repair-migrations-apply lint format test up down logs lock
+.PHONY: install dev run worker beat migrate revision seed lint format test up down logs lock
 
 # Every target runs through `uv run`, which uses the exact versions pinned in uv.lock —
 # no manual venv activation needed, and every teammate gets identical dependency versions.
@@ -29,15 +29,6 @@ revision:
 
 seed:
 	uv run python -m scripts.seed
-
-seed-dummy:
-	uv run python -m scripts.seed_dummy_users
-
-repair-migrations:
-	uv run python -m scripts.repair_migrations
-
-repair-migrations-apply:
-	uv run python -m scripts.repair_migrations --apply
 
 lint:
 	uv run ruff check app/

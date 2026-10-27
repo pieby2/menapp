@@ -1,10 +1,10 @@
-"""Auth-level identity: User, legacy OTP verification records, registered push devices."""
+"""Auth-level identity: User, OTP verification records, registered push devices."""
 
 import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import DevicePlatform, Gender, UserRole, UserStatus
@@ -15,8 +15,8 @@ from app.db.types import pg_enum
 class User(Base, UUIDPKMixin, TimestampMixin, SoftDeleteMixin):
     """Root identity shared by patients, professionals and internal staff.
 
-    Email + password is the login credential; phone number is still required and unique
-    (every account maps to exactly one contact number).
+    Phone number is the primary login credential (OTP-first, matching Indian
+    consumer-app UX); email + password are optional, mainly used by admin/ops.
     """
 
     __tablename__ = "users"
@@ -47,10 +47,6 @@ class User(Base, UUIDPKMixin, TimestampMixin, SoftDeleteMixin):
 
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    # Free-form additional data not modeled as first-class columns (e.g. app-specific or
-    # config-driven fields) — no schema enforcement, validate at the API boundary if needed.
-    extended_attributes: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-
     patient_profile: Mapped["PatientProfile | None"] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
@@ -68,11 +64,7 @@ class User(Base, UUIDPKMixin, TimestampMixin, SoftDeleteMixin):
 
 
 class OTPVerification(Base, UUIDPKMixin):
-    """Unused: retained only so the existing otp_verifications table still maps.
-
-    The prototype authenticates with email + password; nothing writes rows here. Drop the
-    model and the table together when you're sure no OTP flow is coming back.
-    """
+    """Short-lived OTP challenges for login/signup/phone-change. Hashed, never stored raw."""
 
     __tablename__ = "otp_verifications"
 
@@ -108,27 +100,3 @@ class DeviceToken(Base, UUIDPKMixin, TimestampMixin):
     user: Mapped["User"] = relationship(back_populates="device_tokens")
 
     __table_args__ = (Index("uq_device_tokens_user_token", "user_id", "push_token", unique=True),)
-
-
-class RefreshToken(Base, UUIDPKMixin):
-    """One row per issued refresh JWT, tracked by its `jti` claim.
-
-    The JWT signature/expiry is still verified first (see `auth_service.refresh()`) — this
-    table exists purely so a token can be *revoked* before its natural expiry, which a bare
-    JWT can never support. Refresh tokens rotate on every use: using one marks it
-    `revoked_at` and issues a new row: presenting an already-revoked token again is treated
-    as theft and revokes every active token for that user.
-    """
-
-    __tablename__ = "refresh_tokens"
-
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    jti: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True, nullable=False)
-    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Best-effort audit trail linking a rotated token to whatever replaced it — not used for
-    # any security decision, `revoked_at` alone is what makes a token unusable.
-    replaced_by_jti: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)

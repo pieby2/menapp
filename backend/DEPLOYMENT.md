@@ -6,46 +6,17 @@ automatically with `fastapi[standard]`). This guide was written against `fastapi
 0.22.2 by actually installing it and inspecting `--help` output — not from memory — so the
 commands below are real.
 
-## Web MVP: the minimum to deploy
-
-The prototype (this API on FastAPI Cloud + the `mendyr-web` Next.js app on Vercel) needs no
-Redis, Celery, Razorpay, SMS or S3. The web app proxies `/api/*` to this API, so session
-cookies are first-party: no CORS origin to add, and `SESSION_COOKIE_SAMESITE` stays `lax`.
-
-```bash
-fastapi cloud env set SECRET_KEY "$(openssl rand -hex 32)" --secret
-fastapi cloud env set ENVIRONMENT production        # Secure cookies, /docs off
-fastapi cloud env set DEBUG false
-fastapi cloud env set LOG_JSON true
-fastapi cloud env set REDIS_ENABLED false           # in-process rate limiting
-fastapi cloud env set NOMINATIM_USER_AGENT "Mendyr/0.1 (contact: <your email>)"
-# + the POSTGRES_* Supabase settings from step 2 below
-```
-
-The Android/iOS app (`mendyr-web`'s Capacitor build) is different: it calls this API directly
-from its own origins, so `CORS_ORIGINS` must include them (the website still needs none). The
-command replaces the whole list, so add any other origins you already allow to it:
-
-```bash
-fastapi cloud env set CORS_ORIGINS '["https://localhost","capacitor://localhost"]'
-```
-
-Then `fastapi deploy`, and set `BACKEND_URL=https://<your-app>.fastapicloud.dev` on the Vercel
-project. Requests arrive with the API's own hostname, so `ALLOWED_HOSTS` can stay `["*"]` or be
-set to `["<your-app>.fastapicloud.dev"]`. No migration is needed for the MVP branch; seed demo
-accounts with the "Seed demo data" workflow if you want them.
-
 ## What it does and doesn't do — read this first
 
 **FastAPI Cloud deploys your ASGI app only.** It has no visible mechanism for running a
 separate long-lived worker process. That matters a lot for Mendyr specifically:
 
 - ✅ The FastAPI app (`app/main.py:app`) — all 36 HTTP endpoints — deploys fine as-is.
-- ⚠️ **Celery `worker` and `beat` do not run on FastAPI Cloud.** The booking flow doesn't
-  need them (matching is an open-request board — see ARCHITECTURE.md §5), but weekly payout
-  generation and visit reminders **will not fire** unless you run them somewhere else. See
-  "Running Celery separately" below. For the prototype, set `REDIS_ENABLED=false` and skip
-  Redis entirely.
+- ❌ **Celery `worker` and `beat` do not run on FastAPI Cloud.** That means the offer-expiry
+  sweep (`sweep_expired_offers`, every 15s — this is how a `SEARCHING` booking escalates to a
+  wider radius or fails over), weekly payout generation, and visit reminders **will not fire**
+  unless you run them somewhere else. See "Running Celery separately" below — don't skip it,
+  the booking dispatch flow silently stalls without it.
 - FastAPI Cloud doesn't provide Postgres or Redis. You need external Postgres+PostGIS
   (**Supabase** — see `SETUP.md`'s "Option 0", already set up for this project) and an external
   Redis (e.g. [Upstash](https://upstash.com/), which has a free tier and works over TLS the same
@@ -140,8 +111,8 @@ cloud apps list` / `fastapi cloud unlink` manage that link).
 
 ```bash
 fastapi cloud logs                                    # tail the running app's logs
-curl https://<your-app>.fastapicloud.dev/api/v1/healthz
-curl https://<your-app>.fastapicloud.dev/api/v1/readyz   # confirms it can reach Supabase
+curl https://<your-app>.fastapicloud.app/api/v1/healthz
+curl https://<your-app>.fastapicloud.app/api/v1/readyz   # confirms it can reach Supabase
 ```
 
 ## 6. Auto-deploy on push (optional)
@@ -165,7 +136,7 @@ FastAPI Cloud, since the worker needs to read/write the same booking rows and th
 queue the API enqueues work onto.
 
 If you'd rather not run an always-on worker at all, the periodic jobs
-(reminders/payouts — see `app/workers/tasks/`) could be converted into
+(`sweep_expired_offers`/reminders/payouts — see `app/workers/tasks/`) could be converted into
 protected HTTP endpoints triggered by an external scheduler (GitHub Actions cron, cron-job.org,
 Supabase's `pg_cron`) instead of Celery beat — that's a real code change, not just config, so
 it's not done here; ask if you want that built out.

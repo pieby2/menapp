@@ -2,7 +2,7 @@
 
 from typing import Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 T = TypeVar("T")
 
@@ -14,8 +14,8 @@ class ORMModel(BaseModel):
 
 
 class GeoPoint(BaseModel):
-    latitude: float = Field(..., ge=-90, le=90)
-    longitude: float = Field(..., ge=-180, le=180)
+    latitude: float
+    longitude: float
 
 
 class Page(BaseModel, Generic[T]):
