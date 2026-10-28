@@ -38,9 +38,9 @@ const VARIANTS: Record<Variant, string> = {
 };
 
 const SIZES: Record<Size, string> = {
-  sm: "h-9 px-3 text-sm gap-1.5",
-  md: "h-11 px-4 text-sm gap-2",
-  lg: "h-12 px-6 text-base gap-2",
+  sm: "h-10 px-3.5 text-sm gap-1.5",
+  md: "h-12 px-5 text-[15px] gap-2",
+  lg: "h-14 px-6 text-base gap-2.5",
 };
 
 function buttonClasses(variant: Variant, size: Size, className?: string) {
@@ -108,7 +108,7 @@ export function ButtonLink({
 // ── Form fields ──────────────────────────────────────────────────────────
 
 const CONTROL =
-  "block rounded-xl border border-slate-300 bg-white px-3.5 text-sm text-slate-900 shadow-xs " +
+  "block rounded-xl border border-slate-300 bg-white px-3.5 text-[15px] text-slate-900 shadow-xs " +
   "placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-500/15 " +
   "disabled:bg-slate-50 disabled:text-slate-500";
 
@@ -147,13 +147,13 @@ export function Field({
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className, ...props }, ref) {
-    return <input ref={ref} className={cn(CONTROL, "h-11 w-full", className)} {...props} />;
+    return <input ref={ref} className={cn(CONTROL, "h-12 w-full", className)} {...props} />;
   },
 );
 
 /** Height comes from `rows` (default 4). */
 export function Textarea({ className, rows = 4, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea rows={rows} className={cn(CONTROL, "w-full py-2.5", className)} {...props} />;
+  return <textarea rows={rows} className={cn(CONTROL, "w-full py-3", className)} {...props} />;
 }
 
 export function Select({
@@ -163,7 +163,7 @@ export function Select({
   ...props
 }: Omit<SelectHTMLAttributes<HTMLSelectElement>, "size"> & { size?: "sm" | "md" }) {
   return (
-    <select className={cn(CONTROL, size === "sm" ? "h-9 w-32 pr-7" : "h-11 w-full pr-8", className)} {...props}>
+    <select className={cn(CONTROL, size === "sm" ? "h-10 w-32 pr-7" : "h-12 w-full pr-8", className)} {...props}>
       {children}
     </select>
   );
@@ -187,7 +187,7 @@ export function Chip({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors",
+        "inline-flex h-10 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors",
         selected
           ? "border-brand-600 bg-brand-600 text-white"
           : "border-slate-300 bg-white text-slate-700 hover:border-slate-400",
@@ -219,13 +219,13 @@ export function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors disabled:opacity-50",
+        "relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors disabled:opacity-50",
         checked ? "bg-brand-600" : "bg-slate-300",
       )}
     >
       <span
         className={cn(
-          "inline-block size-5 rounded-full bg-white shadow transition-transform",
+          "inline-block size-6 rounded-full bg-white shadow transition-transform",
           checked ? "translate-x-6" : "translate-x-1",
         )}
       />

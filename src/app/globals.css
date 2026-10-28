@@ -3,6 +3,7 @@
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --spacing: 0.3125rem;
 
   /* Brand: the Mendyr deep blue (matches the original Mendyr app). 600 is the primary
      #1262E2, 400 its light tint #63B0F2, 700 its dark shade #0F4ABF. Change these to
@@ -25,6 +26,11 @@
 
 :root {
   color-scheme: light;
+  font-size: 16px;
+}
+
+html {
+  font-size: 16px;
 }
 
 body {
@@ -39,6 +45,8 @@ body {
     48px 48px,
     100% 100%;
   color: var(--color-slate-900);
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 h1,
