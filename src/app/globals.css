@@ -23,6 +23,11 @@
 
 :root {
   color-scheme: light;
+  font-size: 16px;
+}
+
+html {
+  font-size: 16px;
 }
 
 html {
