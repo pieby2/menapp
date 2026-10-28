@@ -8,7 +8,6 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.booking import BookingRead
 from app.schemas.payment import PaymentOrderCreateIn, PaymentOrderOut, PaymentVerifyIn
-from app.services.booking_service import BookingService
 from app.services.payment_service import PaymentService
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -38,10 +37,9 @@ async def verify_payment(
     current_user: User = Depends(require_patient),
     db: AsyncSession = Depends(get_db),
 ) -> BookingRead:
-    booking = await PaymentService(db).verify_and_capture(
+    return await PaymentService(db).verify_and_capture(
         booking_id=payload.booking_id,
         order_id=payload.razorpay_order_id,
         payment_id=payload.razorpay_payment_id,
         signature=payload.razorpay_signature,
     )
-    return await BookingService(db).patient_view(booking.id)

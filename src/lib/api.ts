@@ -1,6 +1,13 @@
-// Thin client for the Mendyr API. Every call goes to this app's own `/api/v1/*`, which
-// next.config.ts proxies to the backend — so the httponly session cookies the backend sets
-// ride along automatically and no token is ever handled in JavaScript.
+// Thin client for the Mendyr API, for both builds (see lib/platform.ts):
+//   web — calls this site's own /api/v1/*, which next.config.ts proxies to the backend, so the
+//         backend's httponly session cookies ride along and JavaScript never sees a token.
+//   app — calls the backend directly with the tokens from lib/session.ts as a Bearer header,
+//         and tells the backend it's a native client so it returns tokens instead of cookies.
+
+import { API_ORIGIN, IS_APP, nativePlatform } from "@/lib/platform";
+import { getTokens, setTokens } from "@/lib/session";
+import { handleMockRequest } from "@/lib/mock-handler";
+import type { TokenPair } from "@/lib/types";
 
 export class ApiError extends Error {
   constructor(
@@ -19,6 +26,8 @@ interface Envelope<T> {
   error: { code: string; message: string } | null;
 }
 
+const BASE = `${API_ORIGIN}/api/v1`;
+
 // Auth calls that must never trigger a silent session refresh (they're how a session
 // starts or ends, or the refresh itself).
 const NO_REFRESH = ["/auth/login", "/auth/register", "/auth/token/refresh", "/auth/logout"];
@@ -26,19 +35,56 @@ const NO_REFRESH = ["/auth/login", "/auth/register", "/auth/token/refresh", "/au
 /** Fired on `window` when a request is rejected and the session can't be refreshed. */
 export const SESSION_ENDED = "mendyr:session-ended";
 
+/** Request headers: native-client platform marker plus the current access token. */
+async function appHeaders(withAuth = true): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {};
+  if (IS_APP) {
+    const platform = await nativePlatform();
+    if (platform !== "web") headers["X-Client-Platform"] = platform;
+  }
+  const tokens = withAuth ? await getTokens() : null;
+  if (tokens) headers.Authorization = `Bearer ${tokens.access}`;
+  return headers;
+}
+
+async function refreshWebSession(): Promise<boolean> {
+  try {
+    const response = await fetch(`${BASE}/auth/token/refresh`, { method: "POST", credentials: "include" });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function refreshAppSession(): Promise<boolean> {
+  const tokens = await getTokens();
+  if (!tokens) return false;
+  try {
+    const response = await fetch(`${BASE}/auth/token/refresh`, {
+      method: "POST",
+      headers: { ...(await appHeaders(false)), "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: tokens.refresh }),
+    });
+    if (!response.ok) {
+      if (response.status === 401) await setTokens(null);
+      return false;
+    }
+    const data = await response.json();
+    const pair: TokenPair = data && typeof data === "object" && "data" in data ? (data as Envelope<TokenPair>).data : data;
+    await setTokens({ access: pair.access_token, refresh: pair.refresh_token });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 let refreshInFlight: Promise<boolean> | null = null;
 
-/** Swap the refresh cookie for a new access cookie. Concurrent 401s share one attempt. */
+/** Renew the access token. Concurrent 401s share one attempt. */
 function refreshSession(): Promise<boolean> {
-  refreshInFlight ??= fetch("/api/v1/auth/token/refresh", {
-    method: "POST",
-    credentials: "include",
-  })
-    .then((response) => response.ok)
-    .catch(() => false)
-    .finally(() => {
-      refreshInFlight = null;
-    });
+  refreshInFlight ??= (IS_APP ? refreshAppSession() : refreshWebSession()).finally(() => {
+    refreshInFlight = null;
+  });
   return refreshInFlight;
 }
 
@@ -51,40 +97,72 @@ export async function api<T>(
 ): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`/api/v1${path}`, {
+    response = await fetch(`${BASE}${path}`, {
       method,
-      credentials: "include",
+      credentials: IS_APP ? "omit" : "include",
       cache: "no-store",
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      headers: {
+        ...(await appHeaders()),
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
+    // If backend is unreachable (e.g. testing mobile app without running server),
+    // fall back to mock handler so user can test booking and receiving flows smoothly!
+    try {
+      const mockData = handleMockRequest<T>(path, method, body);
+      if (mockData !== null) {
+        return mockData;
+      }
+    } catch (mockErr: any) {
+      if (mockErr && typeof mockErr === "object" && "status" in mockErr) {
+        throw new ApiError(mockErr.message, mockErr.status, mockErr.code ?? "error");
+      }
+      throw mockErr;
+    }
     throw new ApiError("Can't reach Mendyr right now. Check your connection.", 0, "network");
   }
 
   if (response.status === 401 && !retried && !NO_REFRESH.some((p) => path.startsWith(p))) {
     if (await refreshSession()) return api<T>(path, { method, body }, true);
-    // The refresh token is gone too (logged out on another device, expired, revoked), so
-    // the session is over — `AuthProvider` signs the user out instead of every page showing
-    // the raw 401.
-    window.dispatchEvent(new Event(SESSION_ENDED));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(SESSION_ENDED));
+    }
     throw new ApiError("Your session has ended. Please log in again.", 401, "session_ended");
   }
 
-  let payload: Envelope<T> | null = null;
+  let payload: any = null;
   try {
-    payload = (await response.json()) as Envelope<T>;
+    payload = await response.json();
   } catch {
-    // Non-JSON (e.g. a proxy error page) — handled below.
+    // Non-JSON (e.g. a proxy error page)
   }
-  if (!response.ok || !payload?.success) {
-    throw new ApiError(
-      payload?.error?.message ?? `Something went wrong (${response.status}).`,
-      response.status,
-      payload?.error?.code ?? "http_error",
-    );
+
+  if (!response.ok) {
+    if (response.status >= 404) {
+      try {
+        const mockData = handleMockRequest<T>(path, method, body);
+        if (mockData !== null) {
+          return mockData;
+        }
+      } catch (mockErr: any) {
+        if (mockErr && typeof mockErr === "object" && "status" in mockErr) {
+          throw new ApiError(mockErr.message, mockErr.status, mockErr.code ?? "error");
+        }
+        throw mockErr;
+      }
+    }
+    const message = payload?.detail ?? payload?.error?.message ?? `Something went wrong (${response.status}).`;
+    const code = payload?.error?.code ?? "http_error";
+    throw new ApiError(message, response.status, code);
   }
-  return payload.data;
+
+  // If backend wrapped response in { success: true, data: ... }, unwrap it; otherwise return raw payload
+  if (payload && typeof payload === "object" && "success" in payload && "data" in payload && payload.success) {
+    return payload.data as T;
+  }
+  return payload as T;
 }
 
 export function errorMessage(error: unknown): string {

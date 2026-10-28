@@ -29,14 +29,23 @@ const PatientBookingsContext = createContext<MyBookings | null>(null);
  */
 export function PatientProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const bookings = useApi<BookingListItem[]>("/bookings?page_size=100", { pollMs: 15_000 });
+  // Poll every 4 seconds so that pro acceptance reflects quickly in patient app
+  const bookings = useApi<BookingListItem[]>("/bookings?page_size=100", { pollMs: 4_000 });
   const updates = useBookingUpdates(bookings.data);
   const { reload } = bookings;
 
-  // Refreshing on navigation keeps the lists fresh, e.g. right after booking or cancelling.
+  // Refreshing on navigation and window focus keeps the lists fresh
   useEffect(() => {
     void reload();
   }, [pathname, reload]);
+
+  useEffect(() => {
+    function onFocus() {
+      void reload();
+    }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [reload]);
 
   return (
     <PatientBookingsContext.Provider value={bookings}>

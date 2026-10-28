@@ -6,12 +6,10 @@ from app.api.v1.endpoints import (
     admin,
     auth,
     bookings,
-    configs,
-    geo,
     health,
+    offers,
     payments,
     professionals,
-    query_info,
     reviews,
     services,
     support,
@@ -30,6 +28,7 @@ api_router.include_router(addresses.router)
 api_router.include_router(services.router)
 api_router.include_router(professionals.router)
 api_router.include_router(bookings.router)
+api_router.include_router(offers.router)
 api_router.include_router(visits.router)
 api_router.include_router(payments.router)
 api_router.include_router(webhooks.router)
@@ -37,6 +36,3 @@ api_router.include_router(wallet.router)
 api_router.include_router(reviews.router)
 api_router.include_router(support.router)
 api_router.include_router(admin.router)
-api_router.include_router(configs.router)
-api_router.include_router(geo.router)
-api_router.include_router(query_info.router)

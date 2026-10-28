@@ -1,28 +1,27 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 
-import { AuthCard, RegisterChoices } from "@/components/auth-forms";
+import { AuthCard, RegisterChoiceFooter, RegisterChoices } from "@/components/auth-forms";
+import { PageSpinner } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Sign up" };
 
-export default function RegisterChoicePage() {
+function RegisterChoiceContent() {
   return (
     <AuthCard
       title="Join Mendyr"
       subtitle="How will you use Mendyr?"
-      footer={
-        <>
-          Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-brand-700 hover:underline">
-            Log in
-          </Link>
-        </>
-      }
+      footer={<RegisterChoiceFooter />}
     >
-      <Suspense fallback={<div className="h-44" />}>
-        <RegisterChoices />
-      </Suspense>
+      <RegisterChoices />
     </AuthCard>
+  );
+}
+
+export default function RegisterChoicePage() {
+  return (
+    <Suspense fallback={<PageSpinner />}>
+      <RegisterChoiceContent />
+    </Suspense>
   );
 }

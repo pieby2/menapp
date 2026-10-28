@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import BaseModel, Field
 
 from app.core.constants import BookingStatus, BookingType
 from app.schemas.common import ORMModel
@@ -11,10 +11,8 @@ from app.schemas.professional import ProfessionalPublicRead
 class BookingCreateIn(BaseModel):
     service_id: uuid.UUID
     address_id: uuid.UUID
-    # Must carry a UTC offset — a naive time is ambiguous for a visit happening in India
-    # but possibly booked from abroad (e.g. a child booking care for a parent).
-    scheduled_start_at: AwareDatetime
-    patient_notes: str | None = Field(default=None, max_length=1000)
+    scheduled_start_at: datetime
+    patient_notes: str | None = None
     coupon_code: str | None = None
     # Care-plan fields — only used when booking_type=CARE_PLAN:
     booking_type: BookingType = BookingType.ONE_TIME
@@ -27,9 +25,7 @@ class BookingQuoteIn(BaseModel):
     """Price preview shown before the patient confirms — no rows written yet."""
 
     service_id: uuid.UUID
-    # Not used by pricing yet (no distance-based fares) — optional so the price can be shown
-    # before the patient has picked an address.
-    address_id: uuid.UUID | None = None
+    address_id: uuid.UUID
     coupon_code: str | None = None
 
 
@@ -42,25 +38,14 @@ class BookingQuoteOut(BaseModel):
 
 
 class BookingCancelIn(BaseModel):
-    reason: str = Field(..., min_length=1, max_length=500)
-
-
-class AssignedProfessionalRead(ProfessionalPublicRead):
-    """The professional assigned to a patient's booking. Includes their phone number: once a
-    visit is confirmed the two need to coordinate directly, and the prototype has no in-app
-    chat or call masking."""
-
-    phone_number: str
+    reason: str
 
 
 class BookingRead(ORMModel):
-    """The patient's view of one of their bookings."""
-
     id: uuid.UUID
     booking_code: str
     status: BookingStatus
     booking_type: BookingType
-    service_id: uuid.UUID
     service_name_snapshot: str
     address_snapshot: str
     scheduled_start_at: datetime
@@ -70,12 +55,7 @@ class BookingRead(ORMModel):
     platform_fee: float
     tax_amount: float
     total_amount: float
-    patient_notes: str | None = None
-    cancellation_reason: str | None = None
-    professional: AssignedProfessionalRead | None = None
-    # The professional's notes from check-out, shown to the patient once the visit is done.
-    visit_summary_notes: str | None = None
-    review_rating: int | None = None
+    professional: ProfessionalPublicRead | None = None
     created_at: datetime
 
 
@@ -89,10 +69,7 @@ class BookingListItem(ORMModel):
     professional_name: str | None = None
 
 
-class BookingRequestRead(BaseModel):
-    """An open booking the calling professional may accept. Shows only the area, not the
-    street address or the patient's identity — those are revealed once they accept."""
-
+class BookingRequest(BaseModel):
     id: uuid.UUID
     booking_code: str
     service_id: uuid.UUID
@@ -101,45 +78,32 @@ class BookingRequestRead(BaseModel):
     scheduled_end_at: datetime
     area: str
     distance_km: float
-    # What the professional takes home (base price minus platform commission).
     earning_amount: float
-    patient_notes: str | None
+    patient_notes: str | None = None
     created_at: datetime
 
 
-class ProfessionalBookingRead(BaseModel):
-    """A booking assigned to the calling professional — everything needed to do the visit."""
+class OfferRespondIn(BaseModel):
+    accept: bool
 
+
+class OfferRead(ORMModel):
     id: uuid.UUID
-    booking_code: str
-    status: BookingStatus
-    service_name: str
-    scheduled_start_at: datetime
-    scheduled_end_at: datetime
-    address: str
-    landmark: str | None
-    instructions: str | None
-    latitude: float
-    longitude: float
-    patient_name: str
-    patient_phone: str
-    patient_notes: str | None
-    earning_amount: float
-    started_at: datetime | None
-    completed_at: datetime | None
-    visit_summary_notes: str | None
-    created_at: datetime
+    booking_id: uuid.UUID
+    round_number: int
+    distance_meters: int
+    status: str
+    expires_at: datetime
 
 
 class VisitCheckInIn(BaseModel):
-    # Only required (and checked against the address) when VISIT_GEOFENCE_ENABLED is on.
-    latitude: float | None = Field(default=None, ge=-90, le=90)
-    longitude: float | None = Field(default=None, ge=-180, le=180)
+    latitude: float
+    longitude: float
 
 
 class VisitCheckOutIn(BaseModel):
-    latitude: float | None = Field(default=None, ge=-90, le=90)
-    longitude: float | None = Field(default=None, ge=-180, le=180)
-    visit_summary_notes: str | None = Field(default=None, max_length=4000)
-    vitals_recorded: str | None = Field(default=None, max_length=2000)
+    latitude: float
+    longitude: float
+    visit_summary_notes: str | None = None
+    vitals_recorded: str | None = None
     proof_of_visit_photo_url: str | None = None

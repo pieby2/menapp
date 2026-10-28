@@ -10,23 +10,23 @@ import { homeFor, useAuth } from "@/lib/auth";
 export function SiteHeader() {
   const { user, loading } = useAuth();
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+      <div className="mx-auto flex h-20 max-w-6xl items-center justify-between gap-6 px-4 sm:px-6">
         <Logo />
-        <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">
-          <Link href="/services" className="hover:text-slate-900">
+        <nav className="hidden items-center gap-8 text-base font-semibold text-slate-700 md:flex">
+          <Link href="/services" className="transition-colors hover:text-brand-600">
             Services
           </Link>
-          <Link href="/#how-it-works" className="hover:text-slate-900">
+          <Link href="/#how-it-works" className="transition-colors hover:text-brand-600">
             How it works
           </Link>
-          <Link href="/#for-professionals" className="hover:text-slate-900">
+          <Link href="/#for-professionals" className="transition-colors hover:text-brand-600">
             For professionals
           </Link>
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 sm:gap-4">
           {loading ? null : user ? (
-            <ButtonLink href={homeFor(user.role)} size="sm">
+            <ButtonLink href={homeFor(user.role)} size="md">
               My dashboard
             </ButtonLink>
           ) : (
@@ -48,24 +48,24 @@ export function SiteHeader() {
 export function SiteFooter() {
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-12 text-base text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="space-y-2">
           <Logo />
-          <p>Healthcare at home — and flexible work for the people who provide it.</p>
+          <p className="text-sm text-slate-500">Healthcare at home — and flexible work for the people who provide it.</p>
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <Link href="/services" className="hover:text-slate-900">
+        <div className="flex flex-wrap gap-x-8 gap-y-3 font-medium">
+          <Link href="/services" className="transition-colors hover:text-brand-600">
             Services
           </Link>
-          <Link href="/register/professional" className="hover:text-slate-900">
+          <Link href="/register/professional" className="transition-colors hover:text-brand-600">
             Work with us
           </Link>
-          <Link href="/login" className="hover:text-slate-900">
+          <Link href="/login" className="transition-colors hover:text-brand-600">
             Log in
           </Link>
         </div>
       </div>
-      <p className="pb-8 text-center text-xs text-slate-400">
+      <p className="border-t border-slate-100 py-6 text-center text-sm text-slate-400">
         © Mendyr · Prototype · Maps data © OpenStreetMap contributors
       </p>
     </footer>

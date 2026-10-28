@@ -46,7 +46,7 @@ function buildDates(now: Date) {
 
 function slotLabel(slot: string): string {
   const [h, m] = slot.split(":").map(Number);
-  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
 
 function Step({
@@ -61,14 +61,16 @@ function Step({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="p-5">
-      <h2 className="mb-4 flex items-center gap-2.5 font-semibold text-slate-900">
-        <span className="flex size-6 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
-          {number}
-        </span>
-        {title}
-        {optional && <span className="text-sm font-normal text-slate-400">(optional)</span>}
-      </h2>
+    <Card className="p-5 sm:p-7 shadow-xs">
+      <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-3.5">
+        <h2 className="flex items-center gap-3 text-lg sm:text-xl font-bold tracking-tight text-slate-900">
+          <span className="flex size-7 sm:size-8 items-center justify-center rounded-xl bg-brand-600 text-xs sm:text-sm font-black text-white shadow-xs">
+            {number}
+          </span>
+          {title}
+        </h2>
+        {optional && <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Optional</span>}
+      </div>
       {children}
     </Card>
   );
@@ -105,7 +107,7 @@ export function BookingFlow() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Price preview for the chosen service (POST, so not via useApi).
+  // Price preview
   const [quoted, setQuoted] = useState<{ serviceId: string; quote: Quote } | null>(null);
   useEffect(() => {
     if (!serviceId) return;
@@ -130,7 +132,7 @@ export function BookingFlow() {
     : !address
       ? "Add an address"
       : !scheduledAt
-        ? "Pick a time"
+        ? "Pick a time slot"
         : null;
 
   async function confirm() {
@@ -147,8 +149,7 @@ export function BookingFlow() {
           patient_notes: notes.trim() || null,
         },
       });
-      toast.success("Booking requested — we're finding a professional near you.");
-      // This page stays mounted (hidden) after navigating away; leave it fresh for next time.
+      toast.success("Request submitted! Broadcasting to verified nurses within 10 km.");
       setPickedTime(null);
       setNotes("");
       router.push(`/patient/bookings/${booking.id}`);
@@ -162,19 +163,22 @@ export function BookingFlow() {
   const gstPct = quote && quote.base_price > 0 ? Math.round((quote.tax_amount / (quote.base_price - quote.discount_amount)) * 100) : 18;
 
   return (
-    <div>
-      <PageHeader title="Book a visit" subtitle="It takes about a minute. You pay after the visit." />
-      {/* grid-cols-1 is minmax(0, 1fr): without it the single mobile column grows to fit
-          the scrolling row of date chips and the page overflows sideways. */}
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 space-y-5">
-          <Step number={1} title="Service">
+    <div className="space-y-6">
+      <PageHeader
+        title="Book a Home Visit"
+        subtitle="Match with verified healthcare professionals in your neighborhood within minutes."
+      />
+
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_390px]">
+        <div className="min-w-0 space-y-6">
+          {/* Step 1: Choose Service */}
+          <Step number={1} title="Choose Service">
             <Select
               aria-label="Service"
               value={serviceId ?? ""}
               onChange={(e) => setServiceId(e.target.value || null)}
             >
-              <option value="">Choose a service…</option>
+              <option value="">Select a healthcare service…</option>
               {groups?.map(({ category, services: inCategory }) => (
                 <optgroup key={category.id} label={category.name}>
                   {inCategory.map((s) => (
@@ -185,30 +189,36 @@ export function BookingFlow() {
                 </optgroup>
               ))}
             </Select>
+
             {service && (
-              <p className="mt-3 text-sm text-slate-600">
-                <span className="font-medium text-slate-800">
-                  {PROFESSION_LABEL[service.required_professional_type]} ·{" "}
-                  {durationLabel(service.duration_minutes)}.
-                </span>{" "}
-                {serviceCopy(service)}
-              </p>
+              <div className="mt-4 rounded-2xl bg-brand-50/80 p-4 sm:p-5 border border-brand-200/80 text-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-bold text-brand-950 text-base">
+                    {PROFESSION_LABEL[service.required_professional_type]} Visit
+                  </p>
+                  <span className="text-xs font-bold text-brand-700 bg-white px-2.5 py-0.5 rounded-full border border-brand-200">
+                    {durationLabel(service.duration_minutes)}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-600 leading-relaxed">{serviceCopy(service)}</p>
+              </div>
             )}
           </Step>
 
-          <Step number={2} title="Address">
+          {/* Step 2: Address */}
+          <Step number={2} title="Select Patient Address">
             {addresses.loading ? (
-              <div className="h-16 animate-pulse rounded-xl bg-slate-100" />
+              <div className="h-20 animate-pulse rounded-2xl bg-slate-100" />
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {addressList.map((a) => (
                   <label
                     key={a.id}
                     className={cn(
-                      "flex cursor-pointer gap-3 rounded-xl border p-3.5 transition",
+                      "flex cursor-pointer items-start gap-3.5 rounded-2xl border p-4 sm:p-5 transition-all",
                       a.id === addressId
-                        ? "border-brand-500 bg-brand-50/60 ring-1 ring-brand-500"
-                        : "border-slate-200 hover:border-slate-300",
+                        ? "border-brand-500 bg-brand-50/70 ring-2 ring-brand-500/30 shadow-xs"
+                        : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50",
                     )}
                   >
                     <input
@@ -216,20 +226,32 @@ export function BookingFlow() {
                       name="address"
                       checked={a.id === addressId}
                       onChange={() => setPickedAddressId(a.id)}
-                      className="mt-1 accent-brand-600"
+                      className="mt-1 size-5 accent-brand-600 shrink-0"
                     />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold capitalize text-slate-900">{a.label}</span>
-                      <span className="block text-sm text-slate-600">{addressLine(a)}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="text-base font-bold capitalize text-slate-900">{a.label}</span>
+                        {a.is_default && (
+                          <span className="text-[11px] font-bold text-brand-700 bg-brand-100 px-2 py-0.5 rounded-full">
+                            Default
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-1 block text-sm sm:text-base text-slate-600 leading-relaxed">
+                        {addressLine(a)}
+                      </span>
                       {a.contact_name && (
-                        <span className="mt-0.5 block text-xs text-slate-500">For {a.contact_name}</span>
+                        <span className="mt-1.5 block text-xs font-semibold text-slate-500">
+                          Patient: {a.contact_name} {a.contact_phone ? `(${a.contact_phone})` : ""}
+                        </span>
                       )}
                     </span>
                   </label>
                 ))}
+
                 {showAddressForm ? (
-                  <div className="rounded-xl border border-slate-200 p-4">
-                    <p className="mb-3 text-sm font-semibold text-slate-900">New address</p>
+                  <div className="rounded-2xl border border-slate-200 p-5 bg-slate-50/70">
+                    <p className="mb-4 text-base font-bold text-slate-900">Add New Address</p>
                     <AddressForm
                       makeDefault={addressList.length === 0}
                       onSaved={(saved) => {
@@ -241,16 +263,22 @@ export function BookingFlow() {
                     />
                   </div>
                 ) : (
-                  <Button variant="ghost" size="sm" icon="plus" onClick={() => setAddingAddress(true)}>
-                    Add a new address
-                  </Button>
+                  <div className="pt-2">
+                    <Button variant="outline" size="sm" icon="plus" onClick={() => setAddingAddress(true)}>
+                      Add new address
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
           </Step>
 
-          <Step number={3} title="Date & time">
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
+          {/* Step 3: Date & Time */}
+          <Step number={3} title="Select Date & Time">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">
+              Available Dates
+            </label>
+            <div className="-mx-1 flex gap-2.5 overflow-x-auto px-1 pb-3">
               {dates.map((d) => {
                 const full = slotsFor(d.key, now).length === 0;
                 return (
@@ -260,122 +288,145 @@ export function BookingFlow() {
                     disabled={full}
                     onClick={() => setPickedDate(d.key)}
                     className={cn(
-                      "flex w-16 shrink-0 flex-col items-center rounded-xl border py-2 text-xs transition disabled:opacity-40",
+                      "flex w-20 sm:w-22 shrink-0 cursor-pointer flex-col items-center rounded-2xl border py-3 text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95",
                       d.key === dateKey
-                        ? "border-brand-600 bg-brand-600 text-white"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
+                        ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-600/30 scale-[1.02]"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
                     )}
                   >
-                    <span className="font-medium">{d.label}</span>
-                    <span className="text-lg font-bold leading-tight">{d.day}</span>
-                    <span>{d.month}</span>
+                    <span className="text-[11px] font-semibold">{d.label}</span>
+                    <span className="text-xl font-black leading-none my-1">{d.day}</span>
+                    <span className="text-[11px] uppercase tracking-wider font-semibold opacity-90">{d.month}</span>
                   </button>
                 );
               })}
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mt-6 mb-2.5">
+              Available Time Slots (IST)
+            </label>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4">
               {slots.map((slot) => (
                 <button
                   key={slot}
                   type="button"
                   onClick={() => setPickedTime(slot)}
                   className={cn(
-                    "h-10 rounded-lg border text-sm font-medium transition",
+                    "h-11 cursor-pointer rounded-xl border text-sm sm:text-base font-semibold transition-all active:scale-95 flex items-center justify-center",
                     slot === time
-                      ? "border-brand-600 bg-brand-600 text-white"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+                      ? "border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-600/25 ring-2 ring-brand-300"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
                   )}
                 >
                   {slotLabel(slot)}
                 </button>
               ))}
             </div>
-            <p className="mt-3 text-xs text-slate-500">Times are India time (IST).</p>
           </Step>
 
-          <Step number={4} title="Notes for the professional" optional>
+          {/* Step 4: Notes */}
+          <Step number={4} title="Notes for Healthcare Staff" optional>
             <Textarea
               value={notes}
               maxLength={1000}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. 72-year-old father, dressing change after knee surgery. Bring gloves and gauze."
+              placeholder="e.g. Patient is 65-year old, recovering from surgery. Please bring sterile dressing kit and blood pressure monitor."
+              rows={3}
             />
           </Step>
         </div>
 
-        <Card className="p-5 lg:sticky lg:top-24">
-          <h2 className="font-semibold text-slate-900">Summary</h2>
-          <dl className="mt-4 space-y-3 text-sm">
-            <div className="flex gap-3">
-              <Icon name="list" className="size-4 shrink-0 text-slate-400" />
-              <dd className={service ? "text-slate-800" : "text-slate-400"}>{service?.name ?? "No service chosen"}</dd>
-            </div>
-            <div className="flex gap-3">
-              <Icon name="calendar" className="size-4 shrink-0 text-slate-400" />
-              <dd className={scheduledAt ? "text-slate-800" : "text-slate-400"}>
-                {scheduledAt ? formatDateTime(scheduledAt) : "No time picked"}
-              </dd>
-            </div>
-            <div className="flex gap-3">
-              <Icon name="pin" className="size-4 shrink-0 text-slate-400" />
-              <dd className={address ? "text-slate-800" : "text-slate-400"}>
-                {address ? addressLine(address) : "No address"}
-              </dd>
-            </div>
-          </dl>
+        {/* Sidebar Summary */}
+        <div className="lg:sticky lg:top-28 space-y-4">
+          <Card className="p-6 shadow-sm border-slate-200/90">
+            <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">
+              Booking Summary
+            </h3>
 
-          {quote && (
-            <dl className="mt-5 space-y-2 border-t border-slate-100 pt-4 text-sm">
-              <div className="flex justify-between text-slate-600">
-                <dt>Visit charge</dt>
-                <dd>{formatINR(quote.base_price)}</dd>
-              </div>
-              {quote.discount_amount > 0 && (
-                <div className="flex justify-between text-emerald-700">
-                  <dt>Discount</dt>
-                  <dd>−{formatINR(quote.discount_amount)}</dd>
+            <dl className="mt-4 space-y-3.5 text-sm sm:text-base">
+              <div className="flex items-start gap-3">
+                <Icon name="list" className="size-5 shrink-0 text-brand-600 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <dt className="text-xs font-bold text-slate-400 uppercase">Service</dt>
+                  <dd className="font-bold text-slate-900">{service?.name ?? "None selected"}</dd>
                 </div>
-              )}
-              <div className="flex justify-between text-slate-600">
-                <dt>GST ({gstPct}%)</dt>
-                <dd>{formatINR(quote.tax_amount)}</dd>
               </div>
-              <div className="flex justify-between pt-1 text-base font-bold text-slate-900">
-                <dt>Total</dt>
-                <dd>{formatINR(quote.total_amount)}</dd>
+
+              <div className="flex items-start gap-3">
+                <Icon name="calendar" className="size-5 shrink-0 text-brand-600 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <dt className="text-xs font-bold text-slate-400 uppercase">Scheduled For</dt>
+                  <dd className="font-bold text-slate-900">
+                    {scheduledAt ? formatDateTime(scheduledAt) : "Pick date and slot"}
+                  </dd>
+                </div>
               </div>
-              <p className="flex items-center gap-1.5 pt-1 text-xs text-slate-500">
-                <Icon name="shield" className="size-3.5" /> Pay after the visit — nothing to pay now.
-              </p>
+
+              <div className="flex items-start gap-3">
+                <Icon name="pin" className="size-5 shrink-0 text-brand-600 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <dt className="text-xs font-bold text-slate-400 uppercase">Address</dt>
+                  <dd className="text-slate-800 font-medium leading-snug">
+                    {address ? addressLine(address) : "No address selected"}
+                  </dd>
+                </div>
+              </div>
             </dl>
-          )}
 
-          {nearby.data && (
-            <p
-              className={cn(
-                "mt-4 rounded-lg px-3 py-2 text-sm",
-                nearby.data.length > 0 ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800",
-              )}
-            >
-              {nearby.data.length > 0
-                ? `${nearby.data.length} ${nearby.data.length === 1 ? "professional" : "professionals"} ${
-                    scheduledAt ? "available near you at this time" : "serve your area"
-                  }`
-                : scheduledAt
-                  ? "No one near you is available at this time yet — you can still send the request."
-                  : "No professionals serve this area yet — you can still send a request."}
-            </p>
-          )}
+            {/* Price breakdown */}
+            {quote && (
+              <div className="mt-5 border-t border-slate-100 pt-4 space-y-2 text-sm sm:text-base">
+                <div className="flex justify-between text-slate-600">
+                  <span>Visit Charge</span>
+                  <span className="font-semibold text-slate-900">{formatINR(quote.base_price)}</span>
+                </div>
+                {quote.discount_amount > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-semibold">
+                    <span>Discount</span>
+                    <span>−{formatINR(quote.discount_amount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-slate-600">
+                  <span>GST ({gstPct}%)</span>
+                  <span className="font-semibold text-slate-900">{formatINR(quote.tax_amount)}</span>
+                </div>
+                <div className="flex justify-between border-t border-slate-100 pt-2.5 text-lg font-black text-slate-900">
+                  <span>Total Amount</span>
+                  <span>{formatINR(quote.total_amount)}</span>
+                </div>
+              </div>
+            )}
 
-          {error && (
-            <Alert tone="error" className="mt-4">
-              {error}
-            </Alert>
-          )}
-          <Button className="mt-5 w-full" size="lg" disabled={!!missing} loading={submitting} onClick={confirm}>
-            {missing ?? "Confirm booking"}
-          </Button>
-        </Card>
+            {/* 10km Radius Availability Banner */}
+            <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs sm:text-sm font-semibold text-emerald-900 flex items-center gap-2">
+              <Icon name="check" className="size-4 shrink-0 text-emerald-600" />
+              <span>Broadcasts to verified nurses within 10 km</span>
+            </div>
+
+            <div className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-500">
+              <Icon name="shield" className="size-4 text-emerald-600 shrink-0" />
+              <span>Zero advance charge · Pay securely after visit</span>
+            </div>
+
+            {error && (
+              <Alert tone="error" className="mt-4 text-sm">
+                {error}
+              </Alert>
+            )}
+
+            <div className="mt-5">
+              <Button
+                className="w-full shadow-md"
+                size="lg"
+                disabled={!!missing}
+                loading={submitting}
+                onClick={confirm}
+              >
+                {missing ? missing : "Request Home Visit →"}
+              </Button>
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );

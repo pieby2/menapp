@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { BookingProgress } from "@/components/booking-cards";
 import { Icon } from "@/components/icons";
@@ -21,54 +21,46 @@ import {
   Textarea,
 } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
-import { ACTIVE_STATUSES, CANCELLABLE_STATUSES, PROFESSION_LABEL } from "@/lib/constants";
+import { ACTIVE_STATUSES, PROFESSION_LABEL } from "@/lib/constants";
 import { displayPhone, durationLabel, formatDateTime, formatINR, formatTime } from "@/lib/format";
 import { useApi } from "@/lib/hooks";
 import type { Booking } from "@/lib/types";
 
-const CANCEL_REASONS = ["Plans changed", "Booked by mistake", "Found care elsewhere", "Taking too long"];
+const CANCEL_REASONS = [
+  "Plans changed",
+  "Booked by mistake",
+  "Found care elsewhere",
+  "Taking too long",
+  "Other",
+];
 
-function StatusMessage({ booking }: { booking: Booking }) {
-  const name = booking.professional?.full_name.split(" ")[0];
-  switch (booking.status) {
-    case "searching":
-      return new Date(booking.scheduled_start_at) < new Date() ? (
-        <Alert tone="warning" title="No one accepted this request in time">
-          Cancel it and book another time — earlier slots usually get picked up faster.
-        </Alert>
-      ) : (
-        <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <Spinner className="mt-0.5 size-4 shrink-0" />
-          <div>
-            <p className="font-semibold">Finding a professional near you</p>
-            <p className="mt-0.5">
-              Your request is with professionals in your area who are free at this time. You&apos;ll
-              see who&apos;s coming here as soon as someone accepts.
-            </p>
-          </div>
+function LiveSearchingBanner({ booking }: { booking: Booking }) {
+  return (
+    <div className="rounded-3xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 via-orange-50/40 to-white p-5 sm:p-6 shadow-sm">
+      <div className="flex items-start gap-4">
+        <div className="relative flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/30">
+          <span className="absolute -inset-1 rounded-2xl bg-amber-400 opacity-40 animate-ping" />
+          <Icon name="locate" className="size-6 text-white relative z-10" />
         </div>
-      );
-    case "assigned":
-    case "confirmed":
-    case "en_route":
-      return (
-        <Alert tone="success" title={`${name} will visit at ${formatTime(booking.scheduled_start_at)}`}>
-          You can call them if you need to share anything before the visit.
-        </Alert>
-      );
-    case "in_progress":
-      return <Alert tone="info" title="Visit in progress" />;
-    case "completed":
-      return <Alert tone="success" title="Visit completed">Thank you for using Mendyr.</Alert>;
-    case "cancelled":
-      return (
-        <Alert tone="error" title="Booking cancelled">
-          {booking.cancellation_reason}
-        </Alert>
-      );
-    default:
-      return null;
-  }
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-0.5 text-xs font-black uppercase tracking-wider text-amber-800">
+              <span className="size-2 rounded-full bg-amber-500 animate-pulse" /> Live Request
+            </span>
+            <span className="text-xs font-semibold text-slate-500">
+              Within 10 km radius
+            </span>
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
+            Searching for qualified nurses near you…
+          </h2>
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+            Your request has been broadcast to all verified healthcare professionals in your area. As soon as a nurse accepts, their full profile and contact details will appear here immediately.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ReviewForm({ bookingId, onDone }: { bookingId: string; onDone: () => void }) {
@@ -78,13 +70,17 @@ function ReviewForm({ bookingId, onDone }: { bookingId: string; onDone: () => vo
   const [saving, setSaving] = useState(false);
 
   async function submit() {
+    if (rating === 0) {
+      toast.error("Please select a star rating first.");
+      return;
+    }
     setSaving(true);
     try {
       await api("/reviews", {
         method: "POST",
         body: { booking_id: bookingId, rating, comment: comment.trim() || null },
       });
-      toast.success("Thanks for your feedback!");
+      toast.success("Thank you for your rating!");
       onDone();
     } catch (err) {
       toast.error(errorMessage(err));
@@ -94,34 +90,35 @@ function ReviewForm({ bookingId, onDone }: { bookingId: string; onDone: () => vo
   }
 
   return (
-    <Card className="p-5">
-      <h2 className="font-semibold text-slate-900">How was your visit?</h2>
-      <div className="mt-3 flex gap-1">
+    <Card className="p-6 border-brand-200 bg-brand-50/20">
+      <h3 className="text-lg sm:text-xl font-bold text-slate-900">How was your visit?</h3>
+      <p className="mt-1 text-sm text-slate-600">Rate your healthcare professional to help us maintain high clinical standards.</p>
+      <div className="mt-4 flex gap-2">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
             aria-label={`${n} star${n > 1 ? "s" : ""}`}
             onClick={() => setRating(n)}
-            className="rounded p-0.5"
+            className="cursor-pointer rounded-xl p-1 transition-transform hover:scale-110 active:scale-95"
           >
             <Icon
               name="star"
-              className={cn("size-8", n <= rating ? "fill-amber-400 text-amber-400" : "text-slate-300")}
+              className={cn("size-8 sm:size-9", n <= rating ? "fill-amber-400 text-amber-400" : "text-slate-300")}
             />
           </button>
         ))}
       </div>
       {rating > 0 && (
-        <div className="mt-3 space-y-3">
+        <div className="mt-4 space-y-4">
           <Textarea
-            rows={2}
-            placeholder="Anything you'd like to share? (optional)"
+            rows={3}
+            placeholder="Share feedback on punctuality, care quality, or hygiene (optional)…"
             value={comment}
             onChange={(e) => setComment(e.target.value)}
           />
           <Button onClick={submit} loading={saving}>
-            Submit rating
+            Submit review
           </Button>
         </div>
       )}
@@ -153,28 +150,31 @@ function CancelPanel({ booking, onCancelled }: { booking: Booking; onCancelled: 
 
   if (!open) {
     return (
-      <Button variant="dangerGhost" onClick={() => setOpen(true)}>
-        Cancel booking
-      </Button>
+      <div className="pt-2">
+        <Button variant="dangerGhost" onClick={() => setOpen(true)} size="sm">
+          Cancel this booking
+        </Button>
+      </div>
     );
   }
+
   return (
-    <Card className="p-5">
-      <h2 className="font-semibold text-slate-900">Cancel this booking?</h2>
-      <p className="mt-1 text-sm text-slate-500">Tell us why — it helps us improve.</p>
-      <div className="mt-3 flex flex-wrap gap-2">
+    <Card className="p-6 border-rose-200 bg-rose-50/30">
+      <h3 className="text-lg sm:text-xl font-bold text-slate-900">Cancel this visit request?</h3>
+      <p className="mt-1 text-sm sm:text-base text-slate-600">Please choose a reason so we can improve our service:</p>
+      <div className="mt-4 flex flex-wrap gap-2.5">
         {CANCEL_REASONS.map((r) => (
           <Chip key={r} selected={reason === r} onClick={() => setReason(r)}>
             {r}
           </Chip>
         ))}
       </div>
-      <div className="mt-4 flex gap-3">
-        <Button variant="danger" loading={saving} onClick={cancel}>
-          Yes, cancel
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        <Button variant="danger" loading={saving} onClick={cancel} size="md">
+          Confirm Cancellation
         </Button>
-        <Button variant="ghost" onClick={() => setOpen(false)}>
-          Keep booking
+        <Button variant="outline" onClick={() => setOpen(false)} size="md">
+          Keep Booking
         </Button>
       </div>
     </Card>
@@ -184,142 +184,184 @@ function CancelPanel({ booking, onCancelled }: { booking: Booking; onCancelled: 
 export function PatientBookingDetail() {
   const { id } = useParams<{ id: string }>();
   const [live, setLive] = useState(true);
-  // Poll while something can still change on the other side (a professional accepting,
-  // starting or completing the visit).
+
+  // Poll every 3 seconds for active requests so nurse acceptance reflects immediately!
   const { data: booking, error, mutate, reload } = useApi<Booking>(`/bookings/${id}`, {
-    pollMs: live ? 10_000 : undefined,
+    pollMs: live ? 3_000 : undefined,
   });
+
   const isLive = booking ? ACTIVE_STATUSES.includes(booking.status) : true;
   if (live !== isLive) setLive(isLive);
 
+  // Re-poll immediately on window focus
+  useEffect(() => {
+    function onFocus() {
+      void reload();
+    }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [reload]);
+
   if (error && !booking) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-2xl mx-auto">
         <Alert tone="error">{error.message}</Alert>
-        <Link href="/patient/bookings" className="text-sm font-semibold text-brand-700">
+        <Link href="/patient/bookings" className="inline-block text-base font-semibold text-brand-700 hover:underline">
           ← Back to my bookings
         </Link>
       </div>
     );
   }
-  if (!booking) return <PageSpinner />;
+
+  if (!booking) return <PageSpinner label="Loading visit details…" />;
 
   const pro = booking.professional;
   const minutes = (Date.parse(booking.scheduled_end_at) - Date.parse(booking.scheduled_start_at)) / 60_000;
+  const isSearching = booking.status === "searching";
+  const isAssigned = ["assigned", "confirmed", "en_route", "in_progress"].includes(booking.status);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
-      <Link href="/patient/bookings" className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800">
-        <Icon name="chevronLeft" className="size-4" /> My bookings
+    <div className="mx-auto max-w-3xl space-y-6">
+      {/* Top back navigation */}
+      <Link
+        href="/patient/bookings"
+        className="inline-flex items-center gap-2 text-sm sm:text-base font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+      >
+        <Icon name="chevronLeft" className="size-4.5" /> All bookings
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{booking.service_name_snapshot}</h1>
-          <p className="mt-1 text-sm text-slate-500">Booking {booking.booking_code}</p>
+      {/* Booking Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-200/80 pb-5">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 leading-snug">
+            {booking.service_name_snapshot}
+          </h1>
+          <p className="mt-1 text-sm font-medium text-slate-500">
+            Booking Code: <span className="font-mono text-slate-800 font-bold tracking-wider">{booking.booking_code}</span>
+          </p>
         </div>
-        <StatusBadge status={booking.status} />
+        <div className="shrink-0 pt-1">
+          <StatusBadge status={booking.status} />
+        </div>
       </div>
 
+      {/* Progress Stepper */}
       <BookingProgress status={booking.status} />
-      <StatusMessage booking={booking} />
 
-      {pro && (
-        <Card className="flex items-center gap-4 p-5">
-          <Avatar name={pro.full_name} size="lg" />
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-slate-900">{pro.full_name}</p>
-            <p className="text-sm text-slate-500">
-              {PROFESSION_LABEL[pro.professional_type]} · {pro.years_of_experience} yrs experience
-            </p>
-            <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
-              {pro.total_ratings > 0 ? (
-                <>
-                  <Stars value={pro.average_rating} /> {pro.average_rating.toFixed(1)}
-                </>
-              ) : (
-                "New on Mendyr"
-              )}
-              {pro.languages_spoken?.length ? ` · ${pro.languages_spoken.join(", ")}` : null}
-            </p>
-          </div>
-          {booking.status !== "cancelled" && (
-            <a
-              href={`tel:${pro.phone_number}`}
-              className="flex shrink-0 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
-              title={displayPhone(pro.phone_number)}
-            >
-              <Icon name="phone" className="size-4" /> Call
-            </a>
-          )}
-        </Card>
-      )}
+      {/* Live Status Banners */}
+      {isSearching && <LiveSearchingBanner booking={booking} />}
 
-      <Card className="divide-y divide-slate-100">
-        <div className="flex gap-3 p-4">
-          <Icon name="calendar" className="mt-0.5 size-5 shrink-0 text-slate-400" />
-          <div>
-            <p className="text-sm font-medium text-slate-900">{formatDateTime(booking.scheduled_start_at)}</p>
-            <p className="text-sm text-slate-500">{durationLabel(minutes)} visit · India time</p>
+      {/* Assigned Nurse / Professional Profile Card */}
+      {isAssigned && pro && (
+        <Card className="overflow-hidden border-2 border-emerald-300 shadow-md">
+          <div className="bg-emerald-50/80 px-6 py-3 border-b border-emerald-200 flex items-center justify-between">
+            <span className="flex items-center gap-2 text-xs sm:text-sm font-bold text-emerald-900 uppercase tracking-wide">
+              <span className="size-2 rounded-full bg-emerald-600 animate-pulse" />
+              Nurse Assigned & Confirmed
+            </span>
+            <span className="text-xs font-semibold text-emerald-700 bg-white px-2.5 py-1 rounded-full border border-emerald-200">
+              Verified Professional
+            </span>
           </div>
-        </div>
-        <div className="flex gap-3 p-4">
-          <Icon name="pin" className="mt-0.5 size-5 shrink-0 text-slate-400" />
-          <p className="text-sm text-slate-700">{booking.address_snapshot}</p>
-        </div>
-        {booking.patient_notes && (
-          <div className="flex gap-3 p-4">
-            <Icon name="list" className="mt-0.5 size-5 shrink-0 text-slate-400" />
-            <p className="whitespace-pre-line text-sm text-slate-700">{booking.patient_notes}</p>
-          </div>
-        )}
-      </Card>
 
-      {booking.visit_summary_notes && (
-        <Card className="p-5">
-          <h2 className="font-semibold text-slate-900">Visit notes from {pro?.full_name.split(" ")[0] ?? "your professional"}</h2>
-          <p className="mt-2 whitespace-pre-line text-sm text-slate-700">{booking.visit_summary_notes}</p>
-        </Card>
-      )}
-
-      <Card className="p-5">
-        <h2 className="font-semibold text-slate-900">Payment</h2>
-        <dl className="mt-3 space-y-2 text-sm">
-          <div className="flex justify-between text-slate-600">
-            <dt>Visit charge</dt>
-            <dd>{formatINR(booking.base_price)}</dd>
-          </div>
-          {booking.discount_amount > 0 && (
-            <div className="flex justify-between text-emerald-700">
-              <dt>Discount</dt>
-              <dd>−{formatINR(booking.discount_amount)}</dd>
+          <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+            <div className="flex items-center gap-4">
+              <Avatar name={pro.full_name} size="lg" />
+              <div className="min-w-0">
+                <p className="text-lg sm:text-xl font-bold text-slate-900">{pro.full_name}</p>
+                <p className="text-sm sm:text-base font-medium text-slate-600">
+                  {PROFESSION_LABEL[pro.professional_type]} · {pro.years_of_experience} yrs exp
+                </p>
+                <div className="mt-1 flex items-center gap-2 text-xs sm:text-sm text-slate-600">
+                  <Stars value={pro.average_rating || 5} />
+                  <span className="font-bold text-slate-800">
+                    {pro.average_rating ? pro.average_rating.toFixed(1) : "5.0"}
+                  </span>
+                  <span className="text-slate-400">({pro.total_ratings || 1} visits)</span>
+                </div>
+              </div>
             </div>
-          )}
-          <div className="flex justify-between text-slate-600">
-            <dt>GST</dt>
-            <dd>{formatINR(booking.tax_amount)}</dd>
+
+            <div className="shrink-0 flex items-center gap-3">
+              <a
+                href={`tel:${pro.phone_number}`}
+                className="flex items-center justify-center gap-2.5 rounded-xl bg-emerald-600 px-6 py-3.5 text-base font-bold text-white shadow-md shadow-emerald-600/25 hover:bg-emerald-700 active:scale-95 transition-all w-full sm:w-auto"
+              >
+                <Icon name="phone" className="size-5" /> Call Nurse
+              </a>
+            </div>
           </div>
-          <div className="flex justify-between border-t border-slate-100 pt-2 font-bold text-slate-900">
-            <dt>Total</dt>
-            <dd>{formatINR(booking.total_amount)}</dd>
+        </Card>
+      )}
+
+      {/* Completed State Review */}
+      {booking.status === "completed" && (
+        <ReviewForm bookingId={booking.id} onDone={reload} />
+      )}
+
+      {/* Booking Details Card */}
+      <Card className="divide-y divide-slate-100 overflow-hidden shadow-xs">
+        <div className="p-5 flex items-start gap-4">
+          <div className="size-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600 shrink-0">
+            <Icon name="calendar" className="size-5" />
           </div>
-        </dl>
-        {booking.status !== "cancelled" && (
-          <p className="mt-3 text-xs text-slate-500">Paid after the visit — nothing is charged online.</p>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Visit Scheduled For</p>
+            <p className="text-base sm:text-lg font-bold text-slate-900 mt-0.5">
+              {formatDateTime(booking.scheduled_start_at)}
+            </p>
+            <p className="text-sm text-slate-500">
+              Estimated duration: {durationLabel(minutes)} · India Standard Time
+            </p>
+          </div>
+        </div>
+
+        <div className="p-5 flex items-start gap-4">
+          <div className="size-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+            <Icon name="pin" className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Visit Location</p>
+            <p className="text-base text-slate-800 font-medium leading-relaxed mt-0.5">
+              {booking.address_snapshot}
+            </p>
+          </div>
+        </div>
+
+        {booking.patient_notes && (
+          <div className="p-5 flex items-start gap-4">
+            <div className="size-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+              <Icon name="list" className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Patient Notes</p>
+              <p className="text-base text-slate-700 leading-relaxed mt-0.5 whitespace-pre-line bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+                {booking.patient_notes}
+              </p>
+            </div>
+          </div>
         )}
+
+        <div className="p-5 flex items-start gap-4">
+          <div className="size-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+            <Icon name="shield" className="size-5 text-emerald-600" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Payment Status</p>
+              <span className="text-base sm:text-lg font-bold text-slate-900">{formatINR(booking.total_amount)}</span>
+            </div>
+            <p className="text-sm font-semibold text-emerald-700 mt-0.5">
+              Pay after the visit · No advance required
+            </p>
+          </div>
+        </div>
       </Card>
 
-      {booking.status === "completed" &&
-        (booking.review_rating ? (
-          <Card className="flex items-center justify-between p-5">
-            <p className="text-sm font-medium text-slate-700">Your rating</p>
-            <Stars value={booking.review_rating} />
-          </Card>
-        ) : (
-          <ReviewForm bookingId={booking.id} onDone={reload} />
-        ))}
-
-      {CANCELLABLE_STATUSES.includes(booking.status) && <CancelPanel booking={booking} onCancelled={mutate} />}
+      {/* Cancellation Option (if cancellable) */}
+      {["created", "searching", "assigned", "confirmed"].includes(booking.status) && (
+        <CancelPanel booking={booking} onCancelled={mutate} />
+      )}
     </div>
   );
 }

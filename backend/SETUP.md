@@ -68,9 +68,6 @@ make migrate     # uv run alembic upgrade head
 make seed        # uv run python -m scripts.seed
 ```
 
-For ready-made test accounts (18 professionals and 12 patients around Bengaluru), run
-`make seed-dummy` — see [DUMMY_USERS.md](DUMMY_USERS.md).
-
 Redis is used for OTP resend-cooldown and rate limiting — install it via Homebrew (macOS) or run
 it under WSL2/Docker (Windows), as shown in the options below, point `REDIS_URL` at a managed
 Redis (Upstash, etc.), **or just skip it entirely**: set `REDIS_ENABLED=false` in `.env` and the
@@ -373,17 +370,19 @@ curl http://localhost:8000/api/v1/services/categories
 
 Interactive docs: http://localhost:8000/docs
 
-Try logging in. `uv run python -m scripts.seed_demo_data` creates a demo patient and
-professionals (password `Demo@12345`) near MG Road, Bengaluru:
+Try the OTP login flow end-to-end:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/auth/login \
-  -H "Content-Type: application/json" -H "X-Client-Platform: android" \
-  -d '{"email":"asha.patel.demo@mendyr.app","password":"Demo@12345"}'
-# returns {"success": true, "data": {"access_token": "...", "refresh_token": "...", "user": {...}}}
-```
+curl -X POST http://localhost:8000/api/v1/auth/otp/request \
+  -H "Content-Type: application/json" \
+  -d '{"phone_number":"+919876500000","purpose":"login"}'
+# the OTP code is printed in the server console (ConsoleSMSProvider) since SMS_PROVIDER=console
 
-The web app (`mendyr-web` repo) runs against this server — see its README.
+curl -X POST http://localhost:8000/api/v1/auth/otp/verify \
+  -H "Content-Type: application/json" \
+  -d '{"phone_number":"+919876500000","purpose":"login","code":"<code from console>","full_name":"Test Patient","role":"patient"}'
+# returns { "access_token": "...", "refresh_token": "..." }
+```
 
 (On native Windows PowerShell, `curl` is aliased to `Invoke-WebRequest` with different flags —
 either use `curl.exe` explicitly to get the real curl binary, or run these from WSL2/Git Bash.)
@@ -401,7 +400,6 @@ either use `curl.exe` explicitly to get the real curl binary, or run these from 
 | `docker info` errors / `docker compose up` hangs | Docker Desktop isn't running — start it, wait for it to report healthy, then retry. On Windows, confirm WSL2 integration is enabled in Docker Desktop's settings. |
 | `make` not found (Windows) | You're in native PowerShell/cmd, not WSL2 — either run commands from a WSL2 Ubuntu terminal, or use the raw `uvicorn`/`celery`/`docker compose` commands shown inline above. |
 | Tests wipe your dev data | `tests/conftest.py` runs `Base.metadata.create_all`/`drop_all` against whatever DB your `.env` points at. Point `POSTGRES_*` at a **separate** disposable test database before running `make test`, or re-run `make migrate && make seed` afterward to restore your dev DB. |
-| `alembic upgrade head` fails with `... already exists` (`DuplicateObject`/`DuplicateTable`) even on a supposedly-fresh run | The DB's real schema is ahead of what `alembic_version` records (or that table is empty/missing) — often caused by the previous row's `create_all`/`drop_all` footgun having been pointed at this DB at some point. Run `make repair-migrations` (dry run) to see what it detects, then `make repair-migrations-apply` once you've confirmed the reported revision actually matches — this only stamps `alembic_version`, it never runs migration DDL. |
 | Redis connection errors | macOS: `brew services list | grep redis`, start with `brew services start redis`. WSL2: `sudo service redis-server status`, start with `sudo service redis-server start`. |
 
 See `ARCHITECTURE.md` for the folder structure, domain model, and what each service does.
